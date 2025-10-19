@@ -1,21 +1,32 @@
 import express from "express";
 import { getData } from "../services/supabase.js";
 import { supabase } from "../services/supabase.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Frontend calls this endpoint
-router.get("/:restaurant_id", async (req, res) => {
+router.use(requireAuth);
+
+// GET inventory - use businessId from auth instead of URL param
+router.get("/", async (req, res) => {
 	try {
-		const { restaurant_id } = req.params;
+		const { data: restaurant, error: restaurantError } = await supabase
+			.from("restaurants")
+			.select("*")
+			.eq("business_id", req.businessId)
+			.single();
+
+		if (restaurantError) throw restaurantError;
+
+		const { restaurant_id } = restaurant.id;
 
 		const { data, error } = await supabase
 			.from("restaurant_inventory")
 			.select(
 				`
-        *,
-        ingredient:ingredient_library(*)
-      `
+				*,
+				ingredient:ingredient_library(*)
+			`
 			)
 			.eq("restaurant_id", restaurant_id);
 
@@ -66,6 +77,16 @@ router.post("/receive", async (req, res) => {
 
 		console.log("📦 Receiving items: ", items);
 
+		const { data: restaurant, error: restaurantError } = await supabase
+			.from("restaurants")
+			.select("id")
+			.eq("business_id", req.businessId)
+			.single();
+
+		if (restaurantError) throw restaurantError;
+
+		const restaurant_id = restaurant.id;
+
 		const results = [];
 
 		for (const item of items) {
@@ -73,8 +94,8 @@ router.post("/receive", async (req, res) => {
 			const { data: existing, error: find_error } = await supabase
 				.from("restaurant_inventory")
 				.select("*")
-				.eq("restaurant_id", item.restaurant_id)
-				.eq("ingredient_id", item.ingredient_id)
+				.eq("restaurant_id", restaurant_id)
+				.eq("ingredient_id", item.ingredientId)
 				.maybeSingle();
 
 			if (find_error) throw find_error;
@@ -100,9 +121,9 @@ router.post("/receive", async (req, res) => {
 				const { data: created, error: create_error } = await supabase
 					.from("restaurant_inventory")
 					.insert({
-						restaurant_id: item.restaurant_id,
+						restaurant_id: restaurant_id,
 						ingredient_id: item.ingredient_id,
-						quantity: item.quantity,
+						quantity: parseFloat(item.quantity),
 						unit: item.unit,
 						location: item.location,
 						expiration_date: item.expiration_date,
