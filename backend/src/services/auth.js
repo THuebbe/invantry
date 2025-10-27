@@ -12,6 +12,7 @@ console.log("Service Key loaded:", supabaseServiceKey ? "Yes" : "No");
 
 export async function registerUser(email, password, metadata) {
 	try {
+		// Step 1: Create the user with admin API
 		const { data, error } = await supabase.auth.admin.createUser({
 			email: email,
 			password: password,
@@ -24,14 +25,14 @@ export async function registerUser(email, password, metadata) {
 
 		if (error) throw new Error(`Auth creation failed: ${error.message}`);
 
-		// Insert into users table - using camelCase to match schema
+		// Step 2: Insert into users table - using camelCase to match schema
 		const { error: dbError } = await supabase.from("users").insert({
 			id: data.user.id,
 			email: data.user.email,
 			firstName: metadata.firstName,
 			lastName: metadata.lastName,
-			role: metadata.role || "USER", // Changed to USER
-			businessId: metadata.businessId,
+			role: metadata.role || "MANAGER",
+			businessId: metadata.businessId || null,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 		});
@@ -39,8 +40,30 @@ export async function registerUser(email, password, metadata) {
 		if (dbError)
 			throw new Error(`Database user creation failed: ${dbError.message}`);
 
+		// Step 3: Sign the user in to get a session/token
+		const { data: sessionData, error: signInError } =
+			await supabase.auth.signInWithPassword({
+				email: email,
+				password: password,
+			});
+
+		if (signInError) throw new Error(`Sign in failed: ${signInError.message}`);
+
+		// Step 4: Get full user details from users table
+		const { data: userDetails, error: userError } = await supabase
+			.from("users")
+			.select("*")
+			.eq("id", data.user.id)
+			.single();
+
+		if (userError)
+			throw new Error(`Failed to fetch user details: ${userError.message}`);
+
 		return {
-			user: data.user,
+			user: sessionData.user,
+			session: sessionData.session,
+			userDetails: userDetails,
+			accessToken: sessionData.session.access_token, // 👈 THIS IS THE KEY!
 			message: "User successfully registered",
 		};
 	} catch (error) {

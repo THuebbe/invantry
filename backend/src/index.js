@@ -6,6 +6,7 @@ import cors from "cors";
 import testRoutes from "./routes/test.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import inventoryRoutes from "./routes/inventory.js";
+import businessRoutes from "./routes/business.js";
 import authRoutes from "./routes/auth.js";
 
 // Load environment variables
@@ -31,6 +32,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/business", businessRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
