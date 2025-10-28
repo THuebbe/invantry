@@ -1,82 +1,22 @@
 import express from "express";
-import { getData } from "../services/supabase.js";
-import { supabase } from "../services/supabase.js";
+import {
+	getInventoryList,
+	lookupIngredientByBarcode,
+	receiveInventory,
+	removeInventory,
+} from "../services/inventory.js";
 import { requireAuth } from "../middleware/auth.js";
+import { supabase } from "../services/supabase.js";
 
 const router = express.Router();
 
+// Apply auth middleware to all routes
 router.use(requireAuth);
 
-// GET inventory - use businessId from auth instead of URL param
+// GET /api/inventory
 router.get("/", async (req, res) => {
 	try {
-		const { data: restaurant, error: restaurantError } = await supabase
-			.from("restaurants")
-			.select("*")
-			.eq("business_id", req.businessId)
-			.single();
-
-		if (restaurantError) throw restaurantError;
-
-		const { restaurant_id } = restaurant.id;
-
-		const { data, error } = await supabase
-			.from("restaurant_inventory")
-			.select(
-				`
-				*,
-				ingredient:ingredient_library(*)
-			`
-			)
-			.eq("restaurant_id", restaurant_id);
-
-		if (error) throw error;
-
-		const inventory = data.map((item) => ({
-			id: item.id,
-			ingredient_id: item.ingredient_id,
-			ingredient_name: item.ingredient.name,
-			category: item.ingredient.category,
-			quantity: item.quantity,
-			unit: item.unit,
-			minimum_quantity: item.minimum_quantity,
-			cost_per_unit: item.cost_per_unit,
-			location: item.location,
-			expiration_date: item.expiration_date,
-			last_restocked: item.last_restocked,
-		}));
-
-		res.json(inventory);
-	} catch (error) {
-		console.error("Inventory error: ", error);
-		res.status(500).json({ error: error.message });
-	}
-});
-
-router.get("/lookup", async (req, res) => {
-	try {
-		const { barcode } = req.query;
-
-		const { data, error } = await supabase
-			.from("ingredient_library")
-			.select("*")
-			.eq("barcode", barcode)
-			.single();
-
-		if (error) throw error;
-
-		res.json(data);
-	} catch (error) {
-		res.status(404).json({ error: "Ingredient not found" });
-	}
-});
-
-router.post("/receive", async (req, res) => {
-	try {
-		const { items } = req.body;
-
-		console.log("📦 Receiving items: ", items);
-
+		// Get restaurant_id from authenticated user's business (matches existing pattern)
 		const { data: restaurant, error: restaurantError } = await supabase
 			.from("restaurants")
 			.select("id")
@@ -84,69 +24,124 @@ router.post("/receive", async (req, res) => {
 			.single();
 
 		if (restaurantError) throw restaurantError;
+		if (!restaurant) {
+			return res.status(404).json({
+				error: "No restaurant found for this business. Please contact support.",
+			});
+		}
 
 		const restaurant_id = restaurant.id;
 
-		const results = [];
+		const inventory = await getInventoryList(restaurant_id);
+		res.json(inventory);
+	} catch (error) {
+		console.error("❌ Get inventory error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
 
+// GET /api/inventory/lookup?barcode=123456789
+router.get("/lookup", async (req, res) => {
+	try {
+		const { barcode } = req.query;
+
+		if (!barcode) {
+			return res.status(400).json({ error: "Barcode parameter is required" });
+		}
+
+		const ingredient = await lookupIngredientByBarcode(barcode);
+		res.json(ingredient);
+	} catch (error) {
+		console.error("❌ Lookup ingredient error:", error);
+		if (error.message.includes("not found")) {
+			res.status(404).json({ error: error.message });
+		} else {
+			res.status(500).json({ error: error.message });
+		}
+	}
+});
+
+// POST /api/inventory/receive
+router.post("/receive", async (req, res) => {
+	try {
+		const { items } = req.body;
+
+		if (!items || !Array.isArray(items) || items.length === 0) {
+			return res.status(400).json({ error: "Items array is required" });
+		}
+
+		// Get restaurant_id from authenticated user's business (matches existing pattern)
+		const { data: restaurant, error: restaurantError } = await supabase
+			.from("restaurants")
+			.select("id")
+			.eq("business_id", req.businessId)
+			.single();
+
+		if (restaurantError) throw restaurantError;
+		if (!restaurant) {
+			return res.status(404).json({
+				error: "No restaurant found for this business. Please contact support.",
+			});
+		}
+
+		const restaurant_id = restaurant.id;
+
+		const result = await receiveInventory(restaurant_id, items);
+		res.json(result);
+	} catch (error) {
+		console.error("❌ Receive inventory error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// POST /api/inventory/remove
+router.post("/remove", async (req, res) => {
+	try {
+		const { items } = req.body;
+
+		if (!items || !Array.isArray(items) || items.length === 0) {
+			return res.status(400).json({ error: "Items array is required" });
+		}
+
+		// Validate each item has required fields
 		for (const item of items) {
-			// Check if inventory already exists
-			const { data: existing, error: find_error } = await supabase
-				.from("restaurant_inventory")
-				.select("*")
-				.eq("restaurant_id", restaurant_id)
-				.eq("ingredient_id", item.ingredientId)
-				.maybeSingle();
-
-			if (find_error) throw find_error;
-
-			if (existing) {
-				// Update existing inventory
-				const { data: updated, error: update_error } = await supabase
-					.from("restaurant_inventory")
-					.update({
-						quantity: parseFloat(existing.quantity) + parseFloat(item.quantity),
-						last_restocked: new Date().toISOString(),
-						expiration_date: item.expiration_date,
-					})
-					.eq("id", existing.id)
-					.select()
-					.single();
-
-				if (update_error) throw update_error;
-
-				results.push(updated);
-			} else {
-				// Create inventory record
-				const { data: created, error: create_error } = await supabase
-					.from("restaurant_inventory")
-					.insert({
-						restaurant_id: restaurant_id,
-						ingredient_id: item.ingredient_id,
-						quantity: parseFloat(item.quantity),
-						unit: item.unit,
-						location: item.location,
-						expiration_date: item.expiration_date,
-						last_restocked: new Date().toISOString(),
-					})
-					.select()
-					.single();
-
-				if (create_error) throw create_error;
-
-				results.push(created);
+			if (!item.ingredientId) {
+				return res
+					.status(400)
+					.json({ error: "Missing required field: ingredientId" });
+			}
+			if (!item.quantity || item.quantity <= 0) {
+				return res.status(400).json({
+					error: "Quantity must be a positive number",
+				});
+			}
+			if (!item.reason) {
+				return res
+					.status(400)
+					.json({ error: "Missing required field: reason" });
 			}
 		}
 
-		console.log("✅ Successfully received", results.length, "items");
+		// Get restaurant_id from authenticated user's business (matches existing pattern)
+		const { data: restaurant, error: restaurantError } = await supabase
+			.from("restaurants")
+			.select("id")
+			.eq("business_id", req.businessId)
+			.single();
 
-		res.json({
-			success: true,
-			message: `Received ${results.length} items`,
-			items: results,
-		});
+		if (restaurantError) throw restaurantError;
+		if (!restaurant) {
+			return res.status(404).json({
+				error: "No restaurant found for this business. Please contact support.",
+			});
+		}
+
+		const restaurant_id = restaurant.id;
+
+		const result = await removeInventory(restaurant_id, items);
+		res.json(result);
 	} catch (error) {
-		console.error("❌ Receive error: ", error);
+		console.error("❌ Remove inventory error:", error);
 		res.status(500).json({ error: error.message });
 	}
 });

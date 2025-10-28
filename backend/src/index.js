@@ -7,6 +7,7 @@ import testRoutes from "./routes/test.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import inventoryRoutes from "./routes/inventory.js";
 import businessRoutes from "./routes/business.js";
+import metricsRoutes from "./routes/metrics.js";
 import authRoutes from "./routes/auth.js";
 
 // Load environment variables
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 
 // Use routes (uncomment when you create the files)
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/metrics", metricsRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/auth", authRoutes);

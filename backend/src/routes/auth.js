@@ -70,7 +70,7 @@ router.get("/me", async (req, res) => {
 	try {
 		// req.user and req.userDetails come from requireAuth middleware
 		res.json({
-			user: req.use,
+			user: req.user,
 			userDetails: req.userDetails,
 			businessId: req.businessId,
 			role: req.userRole,
@@ -105,7 +105,7 @@ router.post("/logout", async (req, res) => {
 
 		res.json(result);
 	} catch (error) {
-		res.status().json({ error: error.message });
+		res.status(500).json({ error: error.message });
 	}
 });
 
