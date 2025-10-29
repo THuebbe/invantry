@@ -17,7 +17,16 @@ import ordersRoutes from "./routes/orders.js";
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+	cors({
+		origin: [
+			"http://localhost:5173", // Local dev
+			"http://localhost:5174", // Local dev alt port
+			"https://pantrypro-six.vercel.app", // Production
+		],
+		credentials: true,
+	})
+);
 app.use(express.json());
 
 // Test route to make sure server is working
