@@ -11,14 +11,20 @@ export async function getDashboardMetrics(restaurantId) {
 	}
 
 	try {
-		// Get low stock count (quantity <= minimum_quantity)
-		const { data: lowStockItems, error: lowStockError } = await supabase
+		// Get all inventory items to check low stock
+		const { data: allInventory, error: inventoryError } = await supabase
 			.from("restaurant_inventory")
-			.select("id", { count: "exact", head: true })
-			.eq("restaurant_id", restaurantId)
-			.filter("quantity", "lte", supabase.raw("minimum_quantity"));
+			.select("quantity, minimum_quantity")
+			.eq("restaurant_id", restaurantId);
 
-		if (lowStockError) throw lowStockError;
+		if (inventoryError) throw inventoryError;
+
+		// Filter for low stock in JavaScript
+		const lowStockCount =
+			allInventory?.filter(
+				(item) =>
+					parseFloat(item.quantity) <= parseFloat(item.minimum_quantity || 0)
+			).length || 0;
 
 		// Get expiring items count (expires within next 7 days)
 		const today = new Date();
@@ -48,7 +54,7 @@ export async function getDashboardMetrics(restaurantId) {
 		const weeklyFoodCostPercent = 28.5;
 
 		return {
-			lowStockCount: lowStockItems || 0,
+			lowStockCount: lowStockCount,
 			expiringItemsCount: expiringCount || 0,
 			openOrdersCount: openOrdersCount || 0,
 			weeklyFoodCostPercent,
@@ -70,14 +76,21 @@ export async function getInventoryMetrics(restaurantId) {
 	}
 
 	try {
-		// Get below reorder count (quantity <= minimum_quantity)
-		const { count: belowReorderCount, error: reorderError } = await supabase
+		// Get all inventory to check below reorder point
+		// Note: We can't compare two columns directly in Supabase JS, so we fetch and filter
+		const { data: allInventory, error: inventoryError } = await supabase
 			.from("restaurant_inventory")
-			.select("id", { count: "exact", head: true })
-			.eq("restaurant_id", restaurantId)
-			.filter("quantity", "lte", supabase.raw("minimum_quantity"));
+			.select("quantity, minimum_quantity")
+			.eq("restaurant_id", restaurantId);
 
-		if (reorderError) throw reorderError;
+		if (inventoryError) throw inventoryError;
+
+		// Filter for below reorder in JavaScript
+		const belowReorderCount =
+			allInventory?.filter(
+				(item) =>
+					parseFloat(item.quantity) <= parseFloat(item.minimum_quantity || 0)
+			).length || 0;
 
 		// Get expiring this week (next 7 days)
 		const today = new Date();
@@ -133,7 +146,7 @@ export async function getInventoryMetrics(restaurantId) {
 		const inventoryTurnoverRate = 2.3;
 
 		return {
-			belowReorderCount: belowReorderCount || 0,
+			belowReorderCount: belowReorderCount,
 			expiringThisWeek: expiringThisWeek || 0,
 			topUsedIngredient,
 			inventoryTurnoverRate,
