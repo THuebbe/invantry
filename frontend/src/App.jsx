@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Landing from "./pages/Landing";
 
 function App() {
 	return (
@@ -15,18 +16,50 @@ function App() {
 				<Routes>
 					<Route
 						path="/"
-						element={<div>Home Page - Coming Soon!</div>}
-					/>
-					<Route
-						path="/register"
-						element={<Register />}
+						element={<Landing />}
 					/>
 					<Route
 						path="/login"
 						element={<Login />}
 					/>
 					<Route
+						path="/register"
+						element={<Register />}
+					/>
+					<Route
 						path="/dashboard"
+						element={
+							<ProtectedRoute>
+								<Dashboard />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/inventory/*"
+						element={
+							<ProtectedRoute>
+								<Dashboard />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/receiving/*"
+						element={
+							<ProtectedRoute>
+								<Dashboard />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/orders/*"
+						element={
+							<ProtectedRoute>
+								<Dashboard />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/reports/*"
 						element={
 							<ProtectedRoute>
 								<Dashboard />

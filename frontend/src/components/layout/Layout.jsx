@@ -11,11 +11,9 @@ export default function Layout({ children, pageTitle }) {
 				{/* 👈 ADD: flex-shrink-0 */}
 				<div className="flex items-center gap-4 flex-1">
 					<div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-						RI
+						P
 					</div>
-					<h1 className="text-xl font-semibold text-gray-900">
-						Restaurant Inventory
-					</h1>
+					<h1 className="text-xl font-semibold text-gray-900">Pantry Pro</h1>
 					<div className="w-px h-8 bg-gray-300"></div>
 					<h2 className="text-lg text-gray-600">{pageTitle || "Dashboard"}</h2>
 				</div>

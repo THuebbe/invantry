@@ -9,6 +9,7 @@ import inventoryRoutes from "./routes/inventory.js";
 import businessRoutes from "./routes/business.js";
 import metricsRoutes from "./routes/metrics.js";
 import authRoutes from "./routes/auth.js";
+import ordersRoutes from "./routes/orders.js";
 
 // Load environment variables
 
@@ -35,6 +36,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/business", businessRoutes);
+app.use("/api/orders", ordersRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
