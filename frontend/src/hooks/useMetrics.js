@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import { fetchMetrics } from "../services/metricsService";
+import { fetchWasteMetrics } from "../services/reportsService";
 
 export function useMetrics() {
 	const location = useLocation();
@@ -13,9 +14,15 @@ export function useMetrics() {
 		queryKey: ["metrics", section],
 		queryFn: async () => {
 			try {
+				// Special handling for waste section - use dedicated waste metrics endpoint
+				if (section === "waste") {
+					return await fetchWasteMetrics("week");
+				}
+
+				// Use regular metrics endpoint for other sections
 				return await fetchMetrics(section);
 			} catch (error) {
-				// If it's a 404, return mock data for reports section
+				// Fallback for reports section (endpoint not built yet)
 				if (error.response?.status === 404 && section === "reports") {
 					console.warn(
 						"Reports metrics endpoint not yet implemented, using mock data"

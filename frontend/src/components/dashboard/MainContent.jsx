@@ -6,7 +6,6 @@ import InventoryContent from "./content/InventoryContent";
 import ReceivingContent from "./content/ReceivingContent";
 import OrdersContent from "./content/OrdersContent";
 import ReportsContent from "./content/ReportsContent";
-import WasteContent from "./content/WasteContent";
 
 export default function MainContent() {
 	const location = useLocation();

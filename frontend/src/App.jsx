@@ -66,14 +66,6 @@ function App() {
 							</ProtectedRoute>
 						}
 					/>
-					<Route
-						path="/waste/*"
-						element={
-							<ProtectedRoute>
-								<Dashboard />
-							</ProtectedRoute>
-						}
-					/>
 				</Routes>
 			</BrowserRouter>
 		</AuthProvider>

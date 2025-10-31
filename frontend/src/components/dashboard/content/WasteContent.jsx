@@ -1,31 +1,43 @@
 // /frontend/src/components/dashboard/content/WasteContent.jsx
 
-import { useWasteEntries, useWasteSummary } from "../../../hooks/useWaste";
-
 export default function WasteContent({ subsection }) {
-	const { data: wasteEntries, isLoading: entriesLoading } = useWasteEntries();
-	const { data: wasteSummary, isLoading: summaryLoading } = useWasteSummary();
+	// This component is no longer needed since we moved waste to hybrid approach
+	// Redirecting to appropriate location
 
-	// Route based on subsection
 	if (subsection === "log") {
-		return <LogWasteView />;
-	}
-
-	if (subsection === "analytics") {
 		return (
-			<WasteAnalyticsView
-				summary={wasteSummary}
-				loading={summaryLoading}
-			/>
+			<div className="bg-white rounded-lg border border-gray-200 p-6">
+				<h2 className="text-2xl font-bold text-gray-900 mb-4">Log Waste</h2>
+				<div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+					<p className="text-blue-700 font-semibold">
+						Waste logging has moved!
+					</p>
+					<p className="text-sm text-blue-600 mt-2">
+						Go to Inventory → Remove/Log Waste to log waste items
+					</p>
+				</div>
+			</div>
 		);
 	}
 
-	// Default: History view
+	// For all other subsections, show redirect message
 	return (
-		<WasteHistoryView
-			entries={wasteEntries}
-			loading={entriesLoading}
-		/>
+		<div className="bg-white rounded-lg border border-gray-200 p-6">
+			<h2 className="text-2xl font-bold text-gray-900 mb-4">
+				Waste Tracking Moved
+			</h2>
+			<div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
+				<p className="text-blue-700 font-semibold">
+					Waste tracking is now part of the hybrid system!
+				</p>
+				<p className="text-sm text-blue-600 mt-4">
+					<strong>To log waste:</strong> Go to Inventory → Remove/Log Waste
+				</p>
+				<p className="text-sm text-blue-600 mt-2">
+					<strong>To view analytics:</strong> Go to Reports → Waste Analysis
+				</p>
+			</div>
+		</div>
 	);
 }
 
