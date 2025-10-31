@@ -29,8 +29,6 @@ export default function MainContent() {
 			return <OrdersContent subsection={subsection} />;
 		case "reports":
 			return <ReportsContent subsection={subsection} />;
-		case "waste":
-			return <WasteContent subsection={subsection} />;
 		case "dashboard":
 		default:
 			return <DashboardContent />;

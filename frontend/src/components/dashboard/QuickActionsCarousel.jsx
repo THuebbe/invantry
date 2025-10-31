@@ -1,4 +1,4 @@
-// /frontend/src/components/dashboard/QuickActionCarousel.jsx
+// /frontend/src/components/dashboard/QuickActionsCarousel.jsx
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";

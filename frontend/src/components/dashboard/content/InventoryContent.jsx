@@ -38,6 +38,8 @@ export default function InventoryContent({ subsection }) {
 					return expirationDate >= today && expirationDate <= sevenDaysFromNow;
 				});
 			}
+			case "remove":
+				return inventory;
 			case "add":
 				return []; // Show add form instead
 			default:
@@ -56,6 +58,8 @@ export default function InventoryContent({ subsection }) {
 				return "Items Expiring Soon";
 			case "add":
 				return "Add New Ingredient";
+			case "remove":
+				return "Remove Stock / Log Waste";
 			default:
 				return "All Ingredients";
 		}

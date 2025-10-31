@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/layout/menuItems.js
+
 import {
 	LayoutDashboard,
 	Package,

@@ -1,4 +1,4 @@
-// /frontend/src/pages/Daashboard.jsx
+// /frontend/src/pages/Dashboard.jsx
 
 import Layout from "../components/layout/Layout";
 import QuickActionsCarousel from "../components/dashboard/QuickActionsCarousel";

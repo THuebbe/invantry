@@ -1,4 +1,4 @@
-// /frontend/src/components/dashboard/contentDashboardContent.jsx
+// /frontend/src/components/dashboard/content/DashboardContent.jsx
 
 export default function DashboardContent() {
 	return (
