@@ -1,3 +1,5 @@
+// /backend/src/routes/business.js
+
 import express from "express";
 import { createBusiness } from "../services/business.js";
 import { requireAuth } from "../middleware/auth.js";

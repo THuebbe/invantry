@@ -1,4 +1,4 @@
-// routes/api.js
+// /backend/src/routes/api.js
 const express = require("express");
 const { fetchFromTable } = require("../utils/dbFetcher");
 const router = express.Router();

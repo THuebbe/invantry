@@ -1,3 +1,5 @@
+// /backend/src/routes/inventory.js
+
 import express from "express";
 import {
 	getInventoryList,
@@ -6,6 +8,7 @@ import {
 	removeInventory,
 } from "../services/inventory.js";
 import { requireAuth } from "../middleware/auth.js";
+import { getData } from "../services/supabase.js";
 import { supabase } from "../services/supabase.js";
 
 const router = express.Router();
@@ -16,26 +19,45 @@ router.use(requireAuth);
 // GET /api/inventory
 router.get("/", async (req, res) => {
 	try {
-		// Get restaurant_id from authenticated user's business (matches existing pattern)
 		const { data: restaurant, error: restaurantError } = await supabase
 			.from("restaurants")
-			.select("id")
+			.select("*")
 			.eq("business_id", req.businessId)
 			.single();
 
 		if (restaurantError) throw restaurantError;
-		if (!restaurant) {
-			return res.status(404).json({
-				error: "No restaurant found for this business. Please contact support.",
-			});
-		}
 
 		const restaurant_id = restaurant.id;
 
-		const inventory = await getInventoryList(restaurant_id);
+		const { data, error } = await supabase
+			.from("restaurant_inventory")
+			.select(
+				`
+				*,
+				ingredient:ingredient_library(*)
+			`
+			)
+			.eq("restaurant_id", restaurant_id);
+
+		if (error) throw error;
+
+		const inventory = data.map((item) => ({
+			id: item.id,
+			ingredient_id: item.ingredient_id,
+			ingredient_name: item.ingredient.name,
+			category: item.ingredient.category,
+			quantity: item.quantity,
+			unit: item.unit,
+			minimum_quantity: item.minimum_quantity,
+			cost_per_unit: item.cost_per_unit,
+			location: item.location,
+			expiration_date: item.expiration_date,
+			last_restocked: item.last_restocked,
+		}));
+
 		res.json(inventory);
 	} catch (error) {
-		console.error("❌ Get inventory error:", error);
+		console.error("Inventory error: ", error);
 		res.status(500).json({ error: error.message });
 	}
 });
@@ -138,7 +160,7 @@ router.post("/remove", async (req, res) => {
 
 		const restaurant_id = restaurant.id;
 
-		const result = await removeInventory(restaurant_id, items);
+		const result = await removeInventory(restaurant_id, items, req.user.id);
 		res.json(result);
 	} catch (error) {
 		console.error("❌ Remove inventory error:", error);

@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/QuickActionCard.jsx
+
 import { Link } from "react-router-dom";
 
 export default function QuickActionCard({ action }) {

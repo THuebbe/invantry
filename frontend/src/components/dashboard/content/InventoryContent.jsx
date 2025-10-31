@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/content/InventoryContent.jsx
+
 import { useQuery } from "@tanstack/react-query";
 import api from "../../../core/database/api";
 

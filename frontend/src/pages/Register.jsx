@@ -1,3 +1,5 @@
+// /frontend/src/pages/Register.jsx
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 // import { useAuth } from "../core/auth/useAuth";

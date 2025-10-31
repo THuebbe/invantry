@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/MetricCard.jsx
+
 import { useState, useEffect, useRef } from "react";
 import { MoreVertical, Check } from "lucide-react";
 

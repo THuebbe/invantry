@@ -1,4 +1,4 @@
-// App.jsx
+// /frontend/src/App.jsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -60,6 +60,14 @@ function App() {
 					/>
 					<Route
 						path="/reports/*"
+						element={
+							<ProtectedRoute>
+								<Dashboard />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path="/waste/*"
 						element={
 							<ProtectedRoute>
 								<Dashboard />

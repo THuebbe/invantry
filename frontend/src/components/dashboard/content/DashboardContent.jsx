@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/contentDashboardContent.jsx
+
 export default function DashboardContent() {
 	return (
 		<div className="bg-white rounded-lg border border-gray-200 p-6">

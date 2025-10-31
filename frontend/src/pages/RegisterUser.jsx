@@ -1,3 +1,5 @@
+// /frontend/src/pages/RegisterUser.jsx
+
 import { useState } from "react";
 import { Eye, EyeOff, Check, X } from "lucide-react";
 import { useAuth } from "../core/auth/useAuth";

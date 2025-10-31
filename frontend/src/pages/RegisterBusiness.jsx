@@ -1,3 +1,5 @@
+// /frontend/src/pages/RegisterBusiness.jsx
+
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { useAuth } from "../core/auth/useAuth";

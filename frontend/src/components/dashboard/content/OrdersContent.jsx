@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/content/OrdersContent.jsx
+
 export default function OrdersContent({ subsection }) {
 	return (
 		<div className="bg-white rounded-lg border border-gray-200 p-6">

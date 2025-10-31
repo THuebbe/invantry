@@ -1,3 +1,5 @@
+// /backend/src/index.js
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,6 +12,7 @@ import businessRoutes from "./routes/business.js";
 import metricsRoutes from "./routes/metrics.js";
 import authRoutes from "./routes/auth.js";
 import ordersRoutes from "./routes/orders.js";
+import reportsRoutes from "./routes/reports.js";
 
 // Load environment variables
 
@@ -42,10 +45,11 @@ app.get("/", (req, res) => {
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/metrics", metricsRoutes);
 app.use("/api/inventory", inventoryRoutes);
-app.use("/api/test", testRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/business", businessRoutes);
 app.use("/api/orders", ordersRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/waste");
 
 // Error handling middleware
 app.use((err, req, res, next) => {

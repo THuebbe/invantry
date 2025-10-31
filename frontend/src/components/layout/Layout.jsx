@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/layout/Layout.jsx
+
 import Sidebar from "./Sidebar";
 
 export default function Layout({ children, pageTitle }) {

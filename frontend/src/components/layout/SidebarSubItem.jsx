@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/layout/SidebarSubItem.jsx
+
 import { Link, useLocation } from "react-router-dom";
 
 export default function SidebarSubItem({ subItem }) {

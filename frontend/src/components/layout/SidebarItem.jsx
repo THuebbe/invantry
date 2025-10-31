@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/layout/SidebarItem.jsx
+
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import SidebarSubItem from "./SidebarSubItem";

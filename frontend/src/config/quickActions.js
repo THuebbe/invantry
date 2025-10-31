@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/layout/quickActions.js
+
 import {
 	PackagePlus,
 	PackageMinus,

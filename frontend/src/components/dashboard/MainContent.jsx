@@ -1,9 +1,12 @@
+// /frontend/src/components/dashboard/MainContent.jsx
+
 import { useLocation } from "react-router-dom";
 import DashboardContent from "./content/DashboardContent";
 import InventoryContent from "./content/InventoryContent";
 import ReceivingContent from "./content/ReceivingContent";
 import OrdersContent from "./content/OrdersContent";
 import ReportsContent from "./content/ReportsContent";
+import WasteContent from "./content/WasteContent";
 
 export default function MainContent() {
 	const location = useLocation();
@@ -26,6 +29,8 @@ export default function MainContent() {
 			return <OrdersContent subsection={subsection} />;
 		case "reports":
 			return <ReportsContent subsection={subsection} />;
+		case "waste":
+			return <WasteContent subsection={subsection} />;
 		case "dashboard":
 		default:
 			return <DashboardContent />;

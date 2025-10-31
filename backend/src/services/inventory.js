@@ -1,3 +1,5 @@
+// /backend/src/services/inventory.js
+
 import { supabase } from "./supabase.js";
 
 /**
@@ -166,19 +168,60 @@ export async function receiveInventory(restaurantId, items) {
 
 /**
  * Remove inventory items (waste, usage, spoilage)
+ * Automatically logs to waste_log table for reporting
  * @param {string} restaurantId - Restaurant UUID
  * @param {Array} items - Array of items to remove with ingredientId, quantity, unit, reason, notes
+ * @param {string} userId - User ID who is logging the removal
  * @returns {Promise<Object>} Result with updated items
  */
-export async function removeInventory(restaurantId, items) {
+export async function removeInventory(restaurantId, items, userId) {
 	if (!restaurantId) {
 		throw new Error("Restaurant ID is required");
 	}
+
+	// Valid waste reasons
+	const validReasons = [
+		"spoilage",
+		"expired",
+		"damaged",
+		"over-prep",
+		"prep-waste",
+		"poor-quality",
+		"short-life",
+		"usage",
+		"donation",
+		"discontinued",
+	];
+
+	// Waste reasons (Category A)
+	const wasteReasons = [
+		"spoilage",
+		"expired",
+		"damaged",
+		"over-prep",
+		"prep-waste",
+		"poor-quality",
+		"short-life",
+	];
 
 	try {
 		const updatedItems = [];
 
 		for (const item of items) {
+			// Validate reason
+			if (!validReasons.includes(item.reason)) {
+				throw new Error(
+					`Invalid reason "${item.reason}". Must be one of: ${validReasons.join(
+						", "
+					)}`
+				);
+			}
+
+			// Determine category
+			const category = wasteReasons.includes(item.reason)
+				? "waste"
+				: "reduction";
+
 			// Find the inventory item
 			const { data: existing, error: findError } = await supabase
 				.from("restaurant_inventory")
@@ -208,6 +251,10 @@ export async function removeInventory(restaurantId, items) {
 				);
 			}
 
+			// Calculate cost value
+			const costPerUnit = parseFloat(existing.cost_per_unit || 0);
+			const costValue = removeQuantity * costPerUnit;
+
 			// Update inventory quantity
 			const now = new Date().toISOString();
 			const { data: updated, error: updateError } = await supabase
@@ -222,16 +269,42 @@ export async function removeInventory(restaurantId, items) {
 
 			if (updateError) throw updateError;
 
-			// TODO: Log removal to waste tracking table in future
-			// For MVP, we're just updating the quantity
+			// ✅ NEW: Log to waste_log table
+			const { data: wasteLog, error: wasteLogError } = await supabase
+				.from("waste_log")
+				.insert({
+					restaurant_id: restaurantId,
+					ingredient_id: item.ingredientId,
+					inventory_id: existing.id,
+					quantity: removeQuantity,
+					unit: item.unit,
+					cost_value: costValue,
+					reason: item.reason,
+					category: category,
+					notes: item.notes || null,
+					logged_by: userId,
+					logged_at: now,
+					created_at: now,
+					updated_at: now,
+				})
+				.select()
+				.single();
+
+			if (wasteLogError) {
+				console.error("⚠️ Failed to log waste (non-critical):", wasteLogError);
+				// Don't fail the whole operation if waste logging fails
+				// This ensures inventory still updates even if waste_log has issues
+			}
 
 			updatedItems.push({
 				id: updated.id,
 				ingredient_id: updated.ingredient_id,
 				new_quantity: parseFloat(updated.quantity),
 				removed_quantity: removeQuantity,
+				cost_value: parseFloat(costValue.toFixed(2)),
 				reason: item.reason,
-				notes: item.notes,
+				category: category,
+				notes: item.notes || null,
 			});
 		}
 

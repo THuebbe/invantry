@@ -4,11 +4,9 @@ import {
 	Truck,
 	ShoppingCart,
 	BarChart3,
-	Settings,
-	User,
+	Trash2,
 } from "lucide-react";
 
-// Main sidebar navigation items
 export const menuItems = [
 	{
 		id: "dashboard",
@@ -23,10 +21,14 @@ export const menuItems = [
 		icon: Package,
 		path: "/inventory",
 		subItems: [
-			{ id: "all-ingredients", label: "All Ingredients", path: "/inventory" },
+			{ id: "all-items", label: "All Ingredients", path: "/inventory" },
 			{ id: "low-stock", label: "Low Stock", path: "/inventory/low-stock" },
 			{ id: "expiring", label: "Expiring Soon", path: "/inventory/expiring" },
-			{ id: "add-ingredient", label: "Add Ingredient", path: "/inventory/add" },
+			{
+				id: "remove-waste",
+				label: "Remove/Log Waste",
+				path: "/inventory/remove",
+			}, // 👈 NEW - operational action
 		],
 	},
 	{
@@ -41,8 +43,8 @@ export const menuItems = [
 				path: "/receiving/new",
 			},
 			{
-				id: "recent-deliveries",
-				label: "Recent Deliveries",
+				id: "receiving-history",
+				label: "Receiving History",
 				path: "/receiving/history",
 			},
 		],
@@ -53,9 +55,9 @@ export const menuItems = [
 		icon: ShoppingCart,
 		path: "/orders",
 		subItems: [
-			{ id: "create-order", label: "Create Order", path: "/orders/new" },
-			{ id: "open-orders", label: "Open Orders", path: "/orders/open" },
-			{ id: "order-history", label: "Order History", path: "/orders/history" },
+			{ id: "all-orders", label: "All Orders", path: "/orders" },
+			{ id: "create-order", label: "Create Order", path: "/orders/create" },
+			{ id: "pending", label: "Pending Orders", path: "/orders/pending" },
 		],
 	},
 	{
@@ -64,37 +66,27 @@ export const menuItems = [
 		icon: BarChart3,
 		path: "/reports",
 		subItems: [
-			{ id: "food-cost", label: "Food Cost", path: "/reports/food-cost" },
-			{ id: "usage", label: "Usage Report", path: "/reports/usage" },
-			{ id: "waste", label: "Waste Tracking", path: "/reports/waste" },
+			{
+				id: "dashboard-overview",
+				label: "Dashboard Overview",
+				path: "/reports/dashboard",
+			},
+			{ id: "waste-analysis", label: "Waste Analysis", path: "/reports/waste" }, // 👈 NEW - analytics
+			{
+				id: "food-cost",
+				label: "Food Cost Analysis",
+				path: "/reports/food-cost",
+			},
+			{
+				id: "inventory-health",
+				label: "Inventory Health",
+				path: "/reports/inventory-health",
+			},
+			{
+				id: "order-performance",
+				label: "Order Performance",
+				path: "/reports/order-performance",
+			},
 		],
-	},
-];
-
-// Settings/profile menu items (for header dropdown or separate menu)
-export const settingsItems = [
-	{
-		id: "restaurant",
-		label: "Restaurant Profile",
-		icon: Settings,
-		path: "/settings/restaurant",
-	},
-	{
-		id: "users",
-		label: "Users & Permissions",
-		icon: User,
-		path: "/settings/users",
-	},
-	{
-		id: "account",
-		label: "My Account",
-		icon: User,
-		path: "/settings/account",
-	},
-	{
-		id: "logout",
-		label: "Logout",
-		icon: null, // We'll handle logout separately
-		action: "logout", // Special action instead of path
 	},
 ];

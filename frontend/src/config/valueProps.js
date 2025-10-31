@@ -1,3 +1,5 @@
+// /frontend/src/components/dashboard/layout/valueProps.js
+
 import { CircleDollarSign, CloudLightning, Trash2 } from "lucide-react";
 
 export const valueProps = [

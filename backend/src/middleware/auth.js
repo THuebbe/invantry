@@ -1,3 +1,5 @@
+// /backend/src/middleware
+
 import { verifyToken } from "../services/auth.js";
 
 export async function requireAuth(req, res, next) {

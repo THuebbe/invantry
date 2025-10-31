@@ -1,3 +1,5 @@
+// /frontend/src/config/dashboardMetrics.js
+
 import {
 	AlertTriangle,
 	Calendar,
