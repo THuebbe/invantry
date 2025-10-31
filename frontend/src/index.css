@@ -2,7 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide scrollbar for webkit browsers */
-.scrollbar-hide::-webkit-scrollbar {
-	display: none;
+@layer base {
+	/* Remove default focus styles, use focus-visible instead */
+	*:focus {
+		outline: none;
+	}
+
+	/* Only show focus on keyboard navigation (not mouse clicks) */
+	*:focus-visible {
+		@apply ring-2 ring-green-500 ring-offset-2;
+	}
+
+	/* Prevent text selection on UI elements */
+	button,
+	a,
+	[role="button"],
+	label {
+		user-select: none;
+	}
+
+	/* Keep selection enabled for text content */
+	p,
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	span,
+	li {
+		user-select: text;
+	}
+
+	/* Keep selection enabled for inputs */
+	input,
+	textarea,
+	select {
+		user-select: text;
+	}
+}
+
+/* Remove focus outline from non-input elements (buttons, links, etc.) */
+button:focus,
+a:focus,
+div[role="button"]:focus,
+[tabindex]:focus:not(input):not(textarea):not(select) {
+	outline: none;
+}
+
+/* Remove user-select to prevent text cursor on buttons/clickable elements */
+button,
+a,
+[role="button"],
+.cursor-pointer {
+	user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 }

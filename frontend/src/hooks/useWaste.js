@@ -1,5 +1,3 @@
-// /frontend/src/hooks/useWaste.js
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	fetchWasteReasons,
@@ -37,7 +35,7 @@ export function useRemoveStock() {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: removeStock,
+		mutationFn: (data) => removeStock(data), // 👈 Pass data directly - it already has { items: [...] }
 		onSuccess: () => {
 			// Invalidate queries to trigger refetch
 			queryClient.invalidateQueries({ queryKey: ["inventory"] });

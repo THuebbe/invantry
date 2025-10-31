@@ -1,5 +1,3 @@
-// frontend\src\services\wasteService.js
-
 import api from "../core/database/api";
 
 /**
@@ -23,10 +21,12 @@ export async function fetchWasteCategories() {
 /**
  * Remove stock from inventory (logs waste automatically)
  * This is the operational endpoint for logging waste
- * @param {Array} items - Array of items to remove
+ * @param {Object} data - Request data
+ * @param {Array} data.items - Array of items to remove
  * @returns {Promise}
  */
-export async function removeStock(items) {
-	const response = await api.post("/inventory/remove", { items });
+export async function removeStock(data) {
+	// Make sure we're sending { items: [...] } structure
+	const response = await api.post("/inventory/remove", data);
 	return response.data;
 }
