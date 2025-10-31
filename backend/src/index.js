@@ -49,7 +49,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/business", businessRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/reports", reportsRoutes);
-app.use("/api/waste");
+// app.use("/api/waste");
 
 // Error handling middleware
 app.use((err, req, res, next) => {
