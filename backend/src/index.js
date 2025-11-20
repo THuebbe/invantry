@@ -16,6 +16,7 @@ import reportsRoutes from "./routes/reports.js";
 import wasteRoutes from "./routes/waste.js";
 import menuItemRoutes from "./routes/menuItemRoutes.js";
 import recipeRoutes from "./routes/recipeRoutes.js";
+import quizRoutes from "./routes/quizRoutes.js";
 // Load environment variables
 
 // Initialize Express app
@@ -54,6 +55,7 @@ app.use("/api/reports", reportsRoutes);
 app.use("/api/waste", wasteRoutes);
 app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/recipes", recipeRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -4,8 +4,10 @@ import { valueProps } from "../../../config/valueProps";
 export default function ValueProp() {
 	return (
 		<div>
-			<h2>Answer 15 Questions to unlock your personalized roadmap for:</h2>
-			<div className="valuecards">
+			<h2 className="flex justify-center pb-8">
+				Answer 15 Questions to unlock your personalized roadmap for:
+			</h2>
+			<div className="flex justify-center gap-16">
 				{valueProps.map((value) => {
 					const key = value.id;
 					const icon = value.icon;
