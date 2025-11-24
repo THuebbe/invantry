@@ -10,7 +10,118 @@ const router = express.Router();
 // Apply auth middleware to all routes
 router.use(requireAuth);
 
-// POST /api/orders (or /api/purchase-orders)
+/**
+ * Helper function to get restaurant ID from business ID
+ */
+async function getRestaurantId(businessId) {
+	const { data: restaurant, error } = await supabase
+		.from("restaurants")
+		.select("id")
+		.eq("business_id", businessId)
+		.single();
+
+	if (error || !restaurant) {
+		throw new Error("No restaurant found for this business");
+	}
+
+	return restaurant.id;
+}
+
+// GET /api/orders/purchase-orders - Get all purchase orders
+router.get("/purchase-orders", async (req, res) => {
+	try {
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		let query = supabase
+			.from("purchase_orders")
+			.select(`
+				*,
+				purchase_order_items(count)
+			`)
+			.eq("restaurant_id", restaurantId);
+
+		// Apply filters if provided
+		if (req.query.status) {
+			query = query.eq("status", req.query.status);
+		}
+		if (req.query.supplier) {
+			query = query.eq("supplier_name", req.query.supplier);
+		}
+
+		// Order by creation date (newest first)
+		query = query.order("created_at", { ascending: false });
+
+		const { data, error } = await query;
+		if (error) throw error;
+
+		// Add item count to each PO
+		const purchaseOrders = data.map(po => ({
+			...po,
+			item_count: po.purchase_order_items[0]?.count || 0,
+		}));
+
+		res.json(purchaseOrders);
+	} catch (error) {
+		console.error("❌ Get purchase orders error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// GET /api/orders/purchase-orders/:id - Get specific purchase order
+router.get("/purchase-orders/:id", async (req, res) => {
+	try {
+		const { id } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		// Get purchase order with items
+		const { data: po, error: poError } = await supabase
+			.from("purchase_orders")
+			.select(`
+				*,
+				purchase_order_items(
+					*,
+					ingredient:ingredient_library(
+						id,
+						name,
+						category
+					)
+				)
+			`)
+			.eq("id", id)
+			.eq("restaurant_id", restaurantId)
+			.single();
+
+		if (poError) throw poError;
+		if (!po) {
+			return res.status(404).json({ error: "Purchase order not found" });
+		}
+
+		// Format the response
+		const formattedPO = {
+			...po,
+			items: po.purchase_order_items.map(item => ({
+				id: item.id,
+				ingredient_id: item.ingredient_id,
+				ingredient_name: item.ingredient?.name,
+				category: item.ingredient?.category,
+				quantity_ordered: parseFloat(item.quantity_ordered),
+				quantity_received: parseFloat(item.quantity_received || 0),
+				unit: item.unit,
+				unit_price: parseFloat(item.unit_price),
+				line_total: parseFloat(item.line_total),
+				expiration_date: item.expiration_date,
+				batch_number: item.batch_number,
+			})),
+		};
+
+		res.json(formattedPO);
+	} catch (error) {
+		console.error("❌ Get purchase order error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// POST /api/orders (create purchase order)
 router.post("/", async (req, res) => {
 	try {
 		// Get restaurant_id from authenticated user's business

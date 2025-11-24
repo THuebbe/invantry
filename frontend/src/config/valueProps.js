@@ -62,28 +62,30 @@ export const credentials = [
 	},
 ];
 
-export const cta = {
-	headline: "Start Your Free Assessment",
-	buttonText: "Discover My Inventory Score",
-	reasons: [
-		{
-			icon: Check,
-			heading: "Takes just 3 minutes",
-			body: "No lengthy forms or complicated setup",
-		},
-		{
-			icon: Check,
-			heading: "100% Free. No Credit Card.",
-			body: "Get your personalized recommendations with zero commitment",
-		},
-		{
-			icon: Check,
-			heading: "Instant Results",
-			body: "See your Restaurant Readiness Score and get your custom action plan immediately",
-		},
-	],
-	closing: "🔒 Your information is secure and will never be shared",
-};
+export const callToAction = [
+	{
+		headline: "Start Your Free Assessment",
+		buttonText: "Discover My Inventory Score",
+		reasons: [
+			{
+				icon: Check,
+				heading: "Takes just 3 minutes",
+				body: "No lengthy forms or complicated setup",
+			},
+			{
+				icon: Check,
+				heading: "100% Free. No Credit Card.",
+				body: "Get your personalized recommendations with zero commitment",
+			},
+			{
+				icon: Check,
+				heading: "Instant Results",
+				body: "See your Restaurant Readiness Score and get your custom action plan immediately",
+			},
+		],
+		closing: "🔒 Your information is secure and will never be shared",
+	},
+];
 
 export const capture = {
 	headline: "Let's Get You Your Results",

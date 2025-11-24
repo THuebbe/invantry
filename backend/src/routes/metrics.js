@@ -252,4 +252,122 @@ router.get("/menu-items", async (req, res) => {
 	}
 });
 
+/**
+ * GET /api/metrics/reports
+ * Get high-level metrics for reports dashboard overview
+ * Returns waste count, waste value, and trending alerts for the specified period
+ */
+router.get("/reports", async (req, res) => {
+	try {
+		// Get restaurant_id from authenticated user's business
+		const { data: restaurant, error: restaurantError } = await supabase
+			.from("restaurants")
+			.select("id")
+			.eq("business_id", req.businessId)
+			.single();
+
+		if (restaurantError) throw restaurantError;
+		if (!restaurant) {
+			return res.status(404).json({
+				error: "No restaurant found for this business. Please contact support.",
+			});
+		}
+
+		const restaurant_id = restaurant.id;
+		const period = req.query.period || "week";
+
+		// Calculate date range based on period
+		const now = new Date();
+		let startDate;
+
+		switch (period) {
+			case "today":
+				startDate = new Date(now.setHours(0, 0, 0, 0));
+				break;
+			case "week":
+				startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+				startDate.setHours(0, 0, 0, 0);
+				break;
+			case "month":
+				startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+				break;
+			case "quarter":
+				const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+				startDate = new Date(now.getFullYear(), quarterMonth, 1);
+				break;
+			case "year":
+				startDate = new Date(now.getFullYear(), 0, 1);
+				break;
+			default:
+				startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+				startDate.setHours(0, 0, 0, 0);
+		}
+
+		// Get waste data for the period
+		const { data: wasteData, error: wasteError } = await supabase
+			.from("waste_log")
+			.select("cost_value, reason, logged_at")
+			.eq("restaurant_id", restaurant_id)
+			.eq("category", "waste")
+			.gte("logged_at", startDate.toISOString());
+
+		if (wasteError) throw wasteError;
+
+		// Calculate metrics
+		const totalWasteValue = wasteData.reduce(
+			(sum, item) => sum + parseFloat(item.cost_value || 0),
+			0
+		);
+		const wasteIncidentCount = wasteData.length;
+
+		// Find top waste reason
+		const reasonCounts = {};
+		wasteData.forEach((item) => {
+			reasonCounts[item.reason] = (reasonCounts[item.reason] || 0) + 1;
+		});
+		const topWasteReason =
+			Object.keys(reasonCounts).length > 0
+				? Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0][0]
+				: null;
+
+		// Check for trending alerts (waste increasing over last 3 days)
+		const threeDaysAgo = new Date();
+		threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+		const recentWaste = wasteData.filter(
+			(item) => new Date(item.logged_at) >= threeDaysAgo
+		);
+		const recentWasteValue = recentWaste.reduce(
+			(sum, item) => sum + parseFloat(item.cost_value || 0),
+			0
+		);
+
+		// Calculate average daily waste
+		const daysInPeriod = Math.max(
+			1,
+			Math.ceil((new Date() - startDate) / (1000 * 60 * 60 * 24))
+		);
+		const avgDailyWaste = totalWasteValue / daysInPeriod;
+		const recentAvgDailyWaste = recentWasteValue / 3;
+
+		const isTrending = recentAvgDailyWaste > avgDailyWaste * 1.2; // 20% increase
+
+		res.json({
+			period,
+			waste_count: wasteIncidentCount,
+			waste_value: parseFloat(totalWasteValue.toFixed(2)),
+			top_waste_reason: topWasteReason,
+			trending: isTrending,
+			trending_alert: isTrending
+				? {
+						message: "Waste is trending upward in the last 3 days",
+						severity: "warning",
+					}
+				: null,
+		});
+	} catch (error) {
+		console.error("Reports metrics error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
 export default router;
