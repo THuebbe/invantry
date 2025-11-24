@@ -1,7 +1,7 @@
 // /backend/src/routes/order.js
 
 import express from "express";
-import { createPurchaseOrder } from "../services/orders.js";
+import { createPurchaseOrder, createPOFromOrderItems } from "../services/orders.js";
 import { requireAuth } from "../middleware/auth.js";
 import { supabase } from "../services/supabase.js";
 
@@ -189,6 +189,41 @@ router.post("/", async (req, res) => {
 		res.status(201).json(result);
 	} catch (error) {
 		console.error("❌ Create purchase order error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// POST /api/orders/from-order-items (create PO from existing order items)
+router.post("/from-order-items", async (req, res) => {
+	try {
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		// Validate request body
+		const { supplierName, expectedDeliveryDate, notes, orderItemIds } = req.body;
+
+		if (!supplierName) {
+			return res.status(400).json({ error: "Supplier name is required" });
+		}
+
+		if (!orderItemIds || !Array.isArray(orderItemIds) || orderItemIds.length === 0) {
+			return res.status(400).json({ 
+				error: "Order item IDs array is required and must not be empty" 
+			});
+		}
+
+		// Create PO from order items with automatic linking
+		const poData = {
+			restaurant_id: restaurantId,
+			supplierName,
+			expectedDeliveryDate,
+			notes,
+			createdBy: req.user.id,
+		};
+
+		const result = await createPOFromOrderItems(poData, orderItemIds);
+		res.status(201).json(result);
+	} catch (error) {
+		console.error("❌ Create PO from order items error:", error);
 		res.status(500).json({ error: error.message });
 	}
 });

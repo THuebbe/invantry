@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../../core/auth/useAuth";
 import api from "../../../../core/database/api";
+import OrderDetailsModal from "../../../shared/OrderDetailsModal";
 
 export default function ViewOrders() {
 	const [orders, setOrders] = useState([]);
@@ -11,6 +12,9 @@ export default function ViewOrders() {
 	const [filter, setFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("created_at");
 	const [sortOrder, setSortOrder] = useState("desc");
+	const [selectedOrder, setSelectedOrder] = useState(null);
+	const [modalMode, setModalMode] = useState("view");
+	const [isModalOpen, setIsModalOpen] = useState(false);
 
 	const { user } = useAuth();
 
@@ -29,6 +33,35 @@ export default function ViewOrders() {
 		} finally {
 			setLoading(false);
 		}
+	};
+
+	const handleViewDetails = (order) => {
+		setSelectedOrder(order);
+		setModalMode("view");
+		setIsModalOpen(true);
+	};
+
+	const handleEditOrder = (order) => {
+		setSelectedOrder(order);
+		setModalMode("edit");
+		setIsModalOpen(true);
+	};
+
+	const handleCloseModal = () => {
+		setIsModalOpen(false);
+		setSelectedOrder(null);
+		setModalMode("view");
+	};
+
+	const handleOrderUpdated = (updatedOrder) => {
+		// Update the order in the list
+		setOrders(prevOrders => 
+			prevOrders.map(order => 
+				order.id === updatedOrder.id 
+					? { ...order, ...updatedOrder, item_count: updatedOrder.items?.length || order.item_count }
+					: order
+			)
+		);
 	};
 
 	const filteredOrders = orders
@@ -169,15 +202,29 @@ export default function ViewOrders() {
 			) : (
 				<div className="space-y-4">
 					{filteredOrders.map((order) => (
-						<OrderCard key={order.id} order={order} />
+						<OrderCard 
+							key={order.id} 
+							order={order} 
+							onViewDetails={handleViewDetails}
+							onEditOrder={handleEditOrder}
+						/>
 					))}
 				</div>
 			)}
+
+			{/* Order Details Modal */}
+			<OrderDetailsModal
+				order={selectedOrder}
+				isOpen={isModalOpen}
+				onClose={handleCloseModal}
+				onOrderUpdated={handleOrderUpdated}
+				mode={modalMode}
+			/>
 		</div>
 	);
 }
 
-function OrderCard({ order }) {
+function OrderCard({ order, onViewDetails, onEditOrder }) {
 	const statusColors = {
 		draft: "bg-gray-100 text-gray-800",
 		submitted: "bg-blue-100 text-blue-800",
@@ -243,11 +290,17 @@ function OrderCard({ order }) {
 				</div>
 
 				<div className="flex gap-2">
-					<button className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+					<button 
+						onClick={() => onViewDetails(order)}
+						className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+					>
 						View Details
 					</button>
 					{order.status === "draft" && (
-						<button className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+						<button 
+							onClick={() => onEditOrder(order)}
+							className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+						>
 							Edit
 						</button>
 					)}

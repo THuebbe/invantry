@@ -10,6 +10,7 @@ import {
 	createQuickOrder,
 	getOrdersPendingPOs,
 	updateOrderStatus,
+	updateRestaurantOrder,
 } from "../services/restaurantOrders.js";
 
 const router = express.Router();
@@ -164,6 +165,35 @@ router.get("/pending-for-pos", async (req, res) => {
 		res.json(orders);
 	} catch (error) {
 		console.error("❌ Get pending PO orders error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// PUT /api/orders/restaurant-orders/:id - Update order details
+router.put("/restaurant-orders/:id", async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { notes, items } = req.body;
+
+		// Verify order belongs to user's restaurant
+		const restaurantId = await getRestaurantId(req.businessId);
+		const order = await getRestaurantOrderById(id);
+		
+		if (order.restaurant_id !== restaurantId) {
+			return res.status(403).json({ error: "Access denied" });
+		}
+
+		// Only allow editing draft orders
+		if (order.status !== "draft") {
+			return res.status(400).json({ 
+				error: "Only draft orders can be edited" 
+			});
+		}
+
+		const updatedOrder = await updateRestaurantOrder(id, { notes, items });
+		res.json(updatedOrder);
+	} catch (error) {
+		console.error("❌ Update restaurant order error:", error);
 		res.status(500).json({ error: error.message });
 	}
 });

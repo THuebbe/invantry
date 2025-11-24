@@ -35,8 +35,8 @@ async function generateOrderNumber(restaurantId) {
 }
 
 /**
- * Create a new purchase order with items
- * @param {Object} orderData - Order data including restaurant_id, supplierName, items, etc.
+ * Create a new purchase order with items and link back to source order items
+ * @param {Object} orderData - Order data including restaurant_id, supplierName, items, sourceOrderItems, etc.
  * @returns {Promise<Object>} Created purchase order with items
  */
 export async function createPurchaseOrder(orderData) {
@@ -47,6 +47,7 @@ export async function createPurchaseOrder(orderData) {
 		items,
 		notes,
 		createdBy,
+		sourceOrderItemIds = [], // Array of restaurant_order_item IDs to link back
 	} = orderData;
 
 	try {
@@ -126,6 +127,29 @@ export async function createPurchaseOrder(orderData) {
 			throw itemsError;
 		}
 
+		// Link source order items to this PO (if provided)
+		if (sourceOrderItemIds.length > 0) {
+			try {
+				const { error: linkError } = await supabase
+					.from("restaurant_order_items")
+					.update({
+						po_id: purchaseOrder.id,
+						po_number: purchaseOrder.order_number,
+						status: "ordered", // Mark as ordered
+						updated_at: new Date().toISOString()
+					})
+					.in("id", sourceOrderItemIds);
+
+				if (linkError) {
+					console.error("Warning: Failed to link order items to PO:", linkError);
+					// Don't throw error here - PO was created successfully
+				}
+			} catch (linkingError) {
+				console.error("Warning: Error during order item linking:", linkingError);
+				// Continue - PO creation was successful
+			}
+		}
+
 		return {
 			purchaseOrder: {
 				id: purchaseOrder.id,
@@ -153,5 +177,62 @@ export async function createPurchaseOrder(orderData) {
 	} catch (error) {
 		console.error("Error creating purchase order:", error);
 		throw new Error(`Failed to create purchase order: ${error.message}`);
+	}
+}
+
+/**
+ * Create a PO from restaurant order items with automatic linking
+ * @param {Object} poData - PO creation data
+ * @param {Array} orderItemIds - Array of restaurant_order_item IDs to include
+ * @returns {Promise<Object>} Created PO with linked order items
+ */
+export async function createPOFromOrderItems(poData, orderItemIds) {
+	const {
+		restaurant_id,
+		supplierName,
+		expectedDeliveryDate,
+		notes,
+		createdBy,
+	} = poData;
+
+	try {
+		// Get the order items details to build PO items
+		const { data: orderItems, error: fetchError } = await supabase
+			.from("restaurant_order_items")
+			.select(`
+				*,
+				ingredient:ingredient_library(
+					id,
+					name,
+					unit
+				)
+			`)
+			.in("id", orderItemIds)
+			.is("po_id", null); // Only get items not already assigned to a PO
+
+		if (fetchError) throw fetchError;
+		if (!orderItems.length) throw new Error("No eligible order items found");
+
+		// Build PO items from order items
+		const poItems = orderItems.map(item => ({
+			ingredientId: item.ingredient_id,
+			quantityOrdered: item.quantity,
+			unit: item.unit,
+			unitPrice: item.estimated_unit_cost || 0,
+		}));
+
+		// Create the PO with source order item linking
+		return await createPurchaseOrder({
+			restaurant_id,
+			supplierName,
+			expectedDeliveryDate,
+			items: poItems,
+			notes,
+			createdBy,
+			sourceOrderItemIds: orderItemIds,
+		});
+	} catch (error) {
+		console.error("Error creating PO from order items:", error);
+		throw new Error(`Failed to create PO from order items: ${error.message}`);
 	}
 }

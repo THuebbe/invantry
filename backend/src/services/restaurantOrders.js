@@ -52,6 +52,7 @@ export async function createRestaurantOrder(orderData) {
 		items,
 		notes,
 		createdBy,
+		status = "draft", // Allow status override, default to "draft"
 	} = orderData;
 
 	try {
@@ -82,7 +83,7 @@ export async function createRestaurantOrder(orderData) {
 				restaurant_id,
 				order_number: orderNumber,
 				order_type: orderType,
-				status: "draft",
+				status: status, // Use the provided status or default "draft"
 				total_estimated_value: parseFloat(totalEstimatedValue.toFixed(2)),
 				notes: notes || null,
 				created_by: createdBy,
@@ -209,7 +210,7 @@ export async function getRestaurantOrderById(orderId) {
 					id,
 					name,
 					category,
-					unit as default_unit
+					unit
 				)
 			`)
 			.eq("order_id", orderId);
@@ -289,6 +290,7 @@ export async function createQuickOrder(restaurantId, createdBy, options = {}) {
 			items,
 			notes: options.notes || "Auto-generated quick order for low stock items",
 			createdBy,
+			status: "submitted", // Quick orders should be auto-submitted
 		};
 
 		return await createRestaurantOrder(orderData);
@@ -329,14 +331,19 @@ export async function getOrdersPendingPOs(restaurantId) {
 
 		return pendingOrders.map(order => ({
 			...order,
-			items: order.restaurant_order_items.map(item => ({
-				...item,
-				ingredient_name: item.ingredient?.name,
-				category: item.ingredient?.category,
-				// Add supplier info if available (would come from ingredient or business rules)
-				supplier_name: getSupplierForIngredient(item.ingredient?.category),
-			})),
-		}));
+			// Only return items that don't have PO assignments
+			items: order.restaurant_order_items
+				.filter(item => !item.po_id) // Critical fix: only unassigned items
+				.map(item => ({
+					...item,
+					ingredient_name: item.ingredient?.name,
+					category: item.ingredient?.category,
+					// Add supplier info if available (would come from ingredient or business rules)
+					supplier_name: getSupplierForIngredient(item.ingredient?.category),
+				})),
+		}))
+		// Remove orders that have no pending items after filtering
+		.filter(order => order.items.length > 0);
 	} catch (error) {
 		console.error("Error fetching pending PO orders:", error);
 		throw new Error(`Failed to fetch pending PO orders: ${error.message}`);
@@ -386,5 +393,70 @@ export async function updateOrderStatus(orderId, newStatus) {
 	} catch (error) {
 		console.error("Error updating order status:", error);
 		throw new Error(`Failed to update order status: ${error.message}`);
+	}
+}
+
+/**
+ * Update order details (notes and items)
+ * @param {string} orderId - Order UUID
+ * @param {Object} updateData - Data to update (notes, items)
+ * @returns {Promise<Object>} Updated order with items
+ */
+export async function updateRestaurantOrder(orderId, updateData) {
+	const { notes, items } = updateData;
+
+	try {
+		// Update order notes
+		if (notes !== undefined) {
+			const { error: orderError } = await supabase
+				.from("restaurant_orders")
+				.update({ 
+					notes,
+					updated_at: new Date().toISOString()
+				})
+				.eq("id", orderId);
+
+			if (orderError) throw orderError;
+		}
+
+		// Update order items if provided
+		if (items && items.length > 0) {
+			let totalEstimatedValue = 0;
+
+			for (const item of items) {
+				const lineTotal = parseFloat(item.quantity) * parseFloat(item.estimated_unit_cost || 0);
+				totalEstimatedValue += lineTotal;
+
+				const { error: itemError } = await supabase
+					.from("restaurant_order_items")
+					.update({
+						quantity: parseFloat(item.quantity),
+						unit: item.unit,
+						estimated_unit_cost: parseFloat(item.estimated_unit_cost || 0),
+						estimated_line_total: parseFloat(lineTotal.toFixed(2)),
+						updated_at: new Date().toISOString()
+					})
+					.eq("id", item.id);
+
+				if (itemError) throw itemError;
+			}
+
+			// Update order total
+			const { error: totalError } = await supabase
+				.from("restaurant_orders")
+				.update({ 
+					total_estimated_value: parseFloat(totalEstimatedValue.toFixed(2)),
+					updated_at: new Date().toISOString()
+				})
+				.eq("id", orderId);
+
+			if (totalError) throw totalError;
+		}
+
+		// Return updated order with items
+		return await getRestaurantOrderById(orderId);
+	} catch (error) {
+		console.error("Error updating restaurant order:", error);
+		throw new Error(`Failed to update restaurant order: ${error.message}`);
 	}
 }

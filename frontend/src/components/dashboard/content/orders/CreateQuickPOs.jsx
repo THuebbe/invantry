@@ -95,22 +95,15 @@ export default function CreateQuickPOs() {
 				
 				const poData = {
 					supplierName: vendor,
-					orderType: "auto_generated",
-					items: group.items.map((item) => ({
-						ingredientId: item.ingredient_id,
-						quantityOrdered: item.quantity,
-						unit: item.unit,
-						unitPrice: item.estimated_unit_cost || 0,
-						lineTotal: item.estimated_line_total || 0,
-					})),
-					sourceOrderIds: Array.from(new Set(group.items.map(item => item.source_order_id))),
+					expectedDeliveryDate: null, // Can be set later
 					notes: `Auto-generated PO from orders: ${group.orders.join(", ")}`,
+					orderItemIds: group.items.map(item => item.id), // Use order item IDs for linking
 				};
 
-				const response = await api.post("/orders", poData);
+				const response = await api.post("/orders/from-order-items", poData);
 				results.push({
 					vendor,
-					poNumber: response.data.order_number,
+					poNumber: response.data.purchaseOrder.order_number, // Fixed path to PO number
 					success: true,
 				});
 			}
