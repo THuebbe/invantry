@@ -11,9 +11,18 @@ import {
 	getOrdersPendingPOs,
 	updateOrderStatus,
 	updateRestaurantOrder,
+	calculateQuantityOnOrder,
+	getSuggestedReorderQuantity,
+	getLowStockItemsForOrder,
 } from "../services/restaurantOrders.js";
 
 const router = express.Router();
+
+// Debug middleware - logs ALL requests to this router
+router.use((req, res, next) => {
+	console.log(`🔵 RESTAURANT ORDERS ROUTER: ${req.method} ${req.path}`);
+	next();
+});
 
 // Apply auth middleware to all routes
 router.use(requireAuth);
@@ -77,15 +86,9 @@ router.get("/restaurant-orders/:id", async (req, res) => {
 router.post("/restaurant-orders", async (req, res) => {
 	try {
 		const restaurantId = await getRestaurantId(req.businessId);
-		const { orderType, items, notes } = req.body;
+		const { orderType, items, notes, status } = req.body;
 
-		// Validation
-		if (!orderType || !["quick", "custom"].includes(orderType)) {
-			return res.status(400).json({
-				error: "Order type is required and must be 'quick' or 'custom'",
-			});
-		}
-
+		// Validation - orderType is now optional
 		if (!items || !Array.isArray(items) || items.length === 0) {
 			return res.status(400).json({
 				error: "Items array is required and must not be empty",
@@ -116,6 +119,7 @@ router.post("/restaurant-orders", async (req, res) => {
 			orderType,
 			items,
 			notes,
+			status, // Pass status from request body
 			createdBy: req.user.id,
 		};
 
@@ -330,6 +334,125 @@ router.post("/generate-pos", async (req, res) => {
 	} catch (error) {
 		console.error("❌ Generate POs error:", error);
 		res.status(500).json({ error: error.message });
+	}
+});
+
+// TEST ENDPOINT
+router.get("/test-logging", (req, res) => {
+	console.log("✅ TEST ENDPOINT HIT!");
+	res.json({ message: "Backend logging works!", timestamp: new Date().toISOString() });
+});
+
+// POST /api/orders/populate-lines - Get suggested order lines from low stock items
+router.post("/populate-lines", async (req, res) => {
+	try {
+		console.log("🎯 POPULATE LINES ROUTE HIT - businessId:", req.businessId);
+		const restaurantId = await getRestaurantId(req.businessId);
+		console.log("🏪 Restaurant ID:", restaurantId);
+
+		// Get low stock items with suggested quantities (accounts for qty on order)
+		const suggestedLines = await getLowStockItemsForOrder(restaurantId);
+		console.log("📋 Suggested lines count:", suggestedLines?.length);
+
+		res.json({
+			success: true,
+			count: suggestedLines.length,
+			items: suggestedLines
+		});
+	} catch (error) {
+		console.error("❌ Populate lines error:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message
+		});
+	}
+});
+
+// GET /api/orders/quantity-on-order/:ingredientId - Get quantity on order for specific ingredient
+router.get("/quantity-on-order/:ingredientId", async (req, res) => {
+	try {
+		const { ingredientId } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		// Validate ingredient ID format
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		if (!uuidRegex.test(ingredientId)) {
+			return res.status(400).json({
+				error: "Invalid ingredient ID format"
+			});
+		}
+
+		const qtyOnOrder = await calculateQuantityOnOrder(ingredientId, restaurantId);
+
+		// Get ingredient details for response
+		const { data: ingredient, error: ingError } = await supabase
+			.from('ingredient_library')
+			.select('name, unit')
+			.eq('id', ingredientId)
+			.single();
+
+		if (ingError) {
+			return res.status(404).json({
+				error: "Ingredient not found"
+			});
+		}
+
+		res.json({
+			success: true,
+			ingredient_id: ingredientId,
+			ingredient_name: ingredient.name,
+			quantity_on_order: qtyOnOrder,
+			unit: ingredient.unit
+		});
+	} catch (error) {
+		console.error("❌ Get quantity on order error:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message
+		});
+	}
+});
+
+// GET /api/orders/suggested-reorder/:ingredientId - Get suggested reorder quantity for ingredient
+router.get("/suggested-reorder/:ingredientId", async (req, res) => {
+	try {
+		const { ingredientId } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		// Validate ingredient ID format
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		if (!uuidRegex.test(ingredientId)) {
+			return res.status(400).json({
+				error: "Invalid ingredient ID format"
+			});
+		}
+
+		const suggestion = await getSuggestedReorderQuantity(ingredientId, restaurantId);
+
+		// Get ingredient name
+		const { data: ingredient, error: ingError } = await supabase
+			.from('ingredient_library')
+			.select('name')
+			.eq('id', ingredientId)
+			.single();
+
+		if (ingError) {
+			return res.status(404).json({
+				error: "Ingredient not found"
+			});
+		}
+
+		res.json({
+			success: true,
+			ingredient_name: ingredient.name,
+			...suggestion
+		});
+	} catch (error) {
+		console.error("❌ Get suggested reorder error:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message
+		});
 	}
 });
 

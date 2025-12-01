@@ -1,6 +1,7 @@
 // /backend/src/services/restaurantOrders.js
 
 import { supabase } from "./supabase.js";
+import { getPreferredVendorForIngredient } from "./vendors.js";
 
 /**
  * Generate a unique restaurant order number
@@ -11,16 +12,19 @@ import { supabase } from "./supabase.js";
 async function generateRestaurantOrderNumber(restaurantId) {
 	try {
 		// Use the database function to generate order number
-		const { data, error } = await supabase.rpc('generate_order_number', {
-			rest_id: restaurantId
+		const { data, error } = await supabase.rpc("generate_order_number", {
+			rest_id: restaurantId,
 		});
 
 		if (error) throw error;
 		return data;
 	} catch (error) {
 		// Fallback to manual generation if function doesn't exist
-		console.warn("Database function not available, using fallback:", error.message);
-		
+		console.warn(
+			"Database function not available, using fallback:",
+			error.message
+		);
+
 		const { data: restaurant } = await supabase
 			.from("restaurants")
 			.select("restaurant_code, order_counter")
@@ -36,19 +40,19 @@ async function generateRestaurantOrderNumber(restaurantId) {
 			.update({ order_counter: counter })
 			.eq("id", restaurantId);
 
-		return `${prefix}-${counter.toString().padStart(3, '0')}`;
+		return `${prefix}-${counter.toString().padStart(3, "0")}`;
 	}
 }
 
 /**
  * Create a new restaurant order with items
- * @param {Object} orderData - Order data including restaurant_id, orderType, items, etc.
+ * @param {Object} orderData - Order data including restaurant_id, orderType (optional), items, etc.
  * @returns {Promise<Object>} Created order with items
  */
 export async function createRestaurantOrder(orderData) {
 	const {
 		restaurant_id,
-		orderType,
+		orderType = null, // orderType is now optional, defaults to null
 		items,
 		notes,
 		createdBy,
@@ -64,7 +68,8 @@ export async function createRestaurantOrder(orderData) {
 		const orderItems = [];
 
 		for (const item of items) {
-			const lineTotal = parseFloat(item.quantity) * parseFloat(item.estimatedUnitCost || 0);
+			const lineTotal =
+				parseFloat(item.quantity) * parseFloat(item.estimatedUnitCost || 0);
 			totalEstimatedValue += lineTotal;
 
 			orderItems.push({
@@ -82,7 +87,7 @@ export async function createRestaurantOrder(orderData) {
 			.insert({
 				restaurant_id,
 				order_number: orderNumber,
-				order_type: orderType,
+				order_type: orderType || null, // Allow null for order_type
 				status: status, // Use the provided status or default "draft"
 				total_estimated_value: parseFloat(totalEstimatedValue.toFixed(2)),
 				notes: notes || null,
@@ -110,10 +115,7 @@ export async function createRestaurantOrder(orderData) {
 
 		if (itemsError) {
 			// Rollback: delete the order if items creation fails
-			await supabase
-				.from("restaurant_orders")
-				.delete()
-				.eq("id", order.id);
+			await supabase.from("restaurant_orders").delete().eq("id", order.id);
 			throw itemsError;
 		}
 
@@ -154,10 +156,12 @@ export async function getRestaurantOrders(restaurantId, filters = {}) {
 	try {
 		let query = supabase
 			.from("restaurant_orders")
-			.select(`
+			.select(
+				`
 				*,
 				restaurant_order_items(count)
-			`)
+			`
+			)
 			.eq("restaurant_id", restaurantId);
 
 		// Apply filters
@@ -174,7 +178,7 @@ export async function getRestaurantOrders(restaurantId, filters = {}) {
 		const { data, error } = await query;
 		if (error) throw error;
 
-		return data.map(order => ({
+		return data.map((order) => ({
 			...order,
 			item_count: order.restaurant_order_items[0]?.count || 0,
 		}));
@@ -204,7 +208,8 @@ export async function getRestaurantOrderById(orderId) {
 		// Get order items with ingredient details
 		const { data: items, error: itemsError } = await supabase
 			.from("restaurant_order_items")
-			.select(`
+			.select(
+				`
 				*,
 				ingredient:ingredient_library(
 					id,
@@ -212,14 +217,15 @@ export async function getRestaurantOrderById(orderId) {
 					category,
 					unit
 				)
-			`)
+			`
+			)
 			.eq("order_id", orderId);
 
 		if (itemsError) throw itemsError;
 
 		return {
 			...order,
-			items: items.map(item => ({
+			items: items.map((item) => ({
 				id: item.id,
 				ingredient_id: item.ingredient_id,
 				ingredient_name: item.ingredient?.name,
@@ -240,7 +246,145 @@ export async function getRestaurantOrderById(orderId) {
 }
 
 /**
+ * Calculate quantity currently on order for a specific ingredient
+ * Uses the database function to sum unfulfilled quantities from open orders/POs
+ * @param {string} ingredientId - Ingredient UUID
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<number>} Quantity on order
+ */
+export async function calculateQuantityOnOrder(ingredientId, restaurantId) {
+	try {
+		const { data, error } = await supabase.rpc(
+			"get_ingredient_quantity_on_order",
+			{
+				p_ingredient_id: ingredientId,
+				p_restaurant_id: restaurantId,
+			}
+		);
+
+		if (error) {
+			console.error("Error calling get_ingredient_quantity_on_order:", error);
+			throw error;
+		}
+
+		return parseFloat(data) || 0;
+	} catch (error) {
+		console.error("Error calculating quantity on order:", error);
+		// Fallback to 0 on error - don't block operations
+		return 0;
+	}
+}
+
+/**
+ * Get suggested reorder quantity for a specific ingredient
+ * Formula: (par_level * 2) - current_qty - qty_on_order
+ * @param {string} ingredientId - Ingredient UUID
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<Object>} Suggested quantity with breakdown
+ */
+export async function getSuggestedReorderQuantity(ingredientId, restaurantId) {
+	try {
+		const { data, error } = await supabase.rpc(
+			"calculate_suggested_reorder_quantity",
+			{
+				p_ingredient_id: ingredientId,
+				p_restaurant_id: restaurantId,
+			}
+		);
+
+		if (error) {
+			console.error(
+				"Error calling calculate_suggested_reorder_quantity:",
+				error
+			);
+			throw error;
+		}
+
+		// Get additional details for the breakdown
+		const { data: inventory, error: invError } = await supabase
+			.from("restaurant_inventory")
+			.select("quantity, minimum_quantity, unit")
+			.eq("ingredient_id", ingredientId)
+			.eq("restaurant_id", restaurantId)
+			.single();
+
+		if (invError) throw invError;
+
+		const qtyOnOrder = await calculateQuantityOnOrder(
+			ingredientId,
+			restaurantId
+		);
+
+		return {
+			ingredient_id: ingredientId,
+			suggested_qty: parseFloat(data) || 0,
+			current_qty: parseFloat(inventory.quantity) || 0,
+			par_level: parseFloat(inventory.minimum_quantity) || 0,
+			qty_on_order: qtyOnOrder,
+			unit: inventory.unit,
+		};
+	} catch (error) {
+		console.error("Error getting suggested reorder quantity:", error);
+		throw new Error(
+			`Failed to get suggested reorder quantity: ${error.message}`
+		);
+	}
+}
+
+/**
+ * Get low stock items for "Populate Lines" feature
+ * Uses database function to return items needing reorder with smart quantities
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<Array>} Array of low stock items with suggested quantities
+ */
+export async function getLowStockItemsForOrder(restaurantId) {
+	try {
+		const { data, error } = await supabase.rpc("get_low_stock_items", {
+			p_restaurant_id: restaurantId,
+		});
+
+		if (error) {
+			console.error("Error calling get_low_stock_items:", error);
+			throw error;
+		}
+
+		console.log("🔍 RAW DATABASE RESPONSE:", JSON.stringify(data?.slice(0, 2), null, 2));
+
+		// Format response for API consistency
+		const formattedData = (data || []).map((item) => ({
+			ingredient_id: item.ingredient_id,
+			ingredient_name: item.ingredient_name,
+			category: item.category,
+			current_qty: parseFloat(item.current_qty) || 0,
+			par_level: parseFloat(item.par_level) || 0,
+			qty_on_order: parseFloat(item.qty_on_order) || 0,
+			suggested_qty: parseFloat(item.suggested_qty) || 0,
+			unit: item.unit,
+			estimated_unit_cost: parseFloat(item.estimated_cost) || 0,
+			preferred_vendor: item.preferred_vendor || "Unknown",
+			// Package quantity fields for Item Details display
+			pkg_qty: item.package_quantity || 1,
+			pkg_uom: item.unit, // Package UOM is same as ingredient unit
+			items_per_pkg: item.package_quantity || 1,
+			item_qty: item.item_quantity,
+			item_uom: item.item_uom,
+		}));
+
+		console.log(
+			"🔍 LOW STOCK ITEMS RETURNED:",
+			JSON.stringify(formattedData.slice(0, 2), null, 2)
+		);
+
+		return formattedData;
+	} catch (error) {
+		console.error("Error fetching low stock items:", error);
+		throw new Error(`Failed to fetch low stock items: ${error.message}`);
+	}
+}
+
+/**
  * Create a quick order from low stock items
+ * NOW USES: Database function for smart quantity calculation
  * @param {string} restaurantId - Restaurant UUID
  * @param {string} createdBy - User ID
  * @param {Object} options - Optional parameters like notes
@@ -248,47 +392,28 @@ export async function getRestaurantOrderById(orderId) {
  */
 export async function createQuickOrder(restaurantId, createdBy, options = {}) {
 	try {
-		// Get low stock items
-		const { data: inventory, error: inventoryError } = await supabase
-			.from("restaurant_inventory")
-			.select(`
-				*,
-				ingredient:ingredient_library(
-					id,
-					name,
-					category,
-					unit
-				)
-			`)
-			.eq("restaurant_id", restaurantId)
-			.filter("quantity", "lte", supabase.raw("minimum_quantity"));
+		// Get low stock items using new database function
+		const lowStockItems = await getLowStockItemsForOrder(restaurantId);
 
-		if (inventoryError) throw inventoryError;
-
-		if (!inventory || inventory.length === 0) {
+		if (!lowStockItems || lowStockItems.length === 0) {
 			throw new Error("No low stock items found");
 		}
 
-		// Create order items with suggested quantities
-		const items = inventory.map(item => {
-			const suggestedQuantity = Math.max(
-				(item.minimum_quantity || 10) * 2 - item.quantity,
-				1
-			);
-
-			return {
-				ingredientId: item.ingredient_id,
-				quantity: suggestedQuantity,
-				unit: item.unit || item.ingredient.unit,
-				estimatedUnitCost: item.cost_per_unit || 0,
-			};
-		});
+		// Create order items with suggested quantities from database
+		const items = lowStockItems.map((item) => ({
+			ingredientId: item.ingredient_id,
+			quantity: item.suggested_qty, // Use smart calculated quantity
+			unit: item.unit,
+			estimatedUnitCost: item.estimated_unit_cost,
+		}));
 
 		const orderData = {
 			restaurant_id: restaurantId,
 			orderType: "quick",
 			items,
-			notes: options.notes || "Auto-generated quick order for low stock items",
+			notes:
+				options.notes ||
+				"Auto-generated quick order for low stock items (accounts for qty on order)",
 			createdBy,
 			status: "submitted", // Quick orders should be auto-submitted
 		};
@@ -309,65 +434,81 @@ export async function getOrdersPendingPOs(restaurantId) {
 	try {
 		const { data: orders, error } = await supabase
 			.from("restaurant_orders")
-			.select(`
+			.select(
+				`
 				*,
 				restaurant_order_items(
 					*,
 					ingredient:ingredient_library(
+						id,
 						name,
 						category
 					)
 				)
-			`)
+			`
+			)
 			.eq("restaurant_id", restaurantId)
 			.eq("status", "submitted");
 
 		if (error) throw error;
 
 		// Filter orders that have items without PO assignments
-		const pendingOrders = orders.filter(order => {
-			return order.restaurant_order_items.some(item => !item.po_id);
+		const pendingOrders = orders.filter((order) => {
+			return order.restaurant_order_items.some((item) => !item.po_id);
 		});
 
-		return pendingOrders.map(order => ({
-			...order,
-			// Only return items that don't have PO assignments
-			items: order.restaurant_order_items
-				.filter(item => !item.po_id) // Critical fix: only unassigned items
-				.map(item => ({
-					...item,
-					ingredient_name: item.ingredient?.name,
-					category: item.ingredient?.category,
-					// Add supplier info if available (would come from ingredient or business rules)
-					supplier_name: getSupplierForIngredient(item.ingredient?.category),
-				})),
-		}))
+		// Map orders and get vendor info for each ingredient
+		const ordersWithVendors = await Promise.all(
+			pendingOrders.map(async (order) => {
+				// Only return items that don't have PO assignments
+				const pendingItems = order.restaurant_order_items.filter(
+					(item) => !item.po_id
+				);
+
+				// Get vendor info for each item
+				const itemsWithVendors = await Promise.all(
+					pendingItems.map(async (item) => {
+						let vendorName = "General Supplier"; // Default fallback
+
+						try {
+							// Get preferred vendor from database
+							const preferredVendor = await getPreferredVendorForIngredient(
+								item.ingredient_id,
+								restaurantId
+							);
+
+							if (preferredVendor) {
+								vendorName = preferredVendor.name;
+							}
+						} catch (error) {
+							console.warn(
+								`Could not fetch vendor for ingredient ${item.ingredient_id}:`,
+								error.message
+							);
+						}
+
+						return {
+							...item,
+							ingredient_name: item.ingredient?.name,
+							category: item.ingredient?.category,
+							supplier_name: vendorName,
+						};
+					})
+				);
+
+				return {
+					...order,
+					items: itemsWithVendors,
+				};
+			})
+		);
+
 		// Remove orders that have no pending items after filtering
-		.filter(order => order.items.length > 0);
+		return ordersWithVendors.filter((order) => order.items.length > 0);
 	} catch (error) {
 		console.error("Error fetching pending PO orders:", error);
 		throw new Error(`Failed to fetch pending PO orders: ${error.message}`);
 	}
-}
-
-/**
- * Helper function to determine supplier based on ingredient category
- * This is a simple implementation - in real world this would come from supplier management
- * @param {string} category - Ingredient category
- * @returns {string} Supplier name
- */
-function getSupplierForIngredient(category) {
-	const supplierMap = {
-		"protein": "Sysco Foods",
-		"produce": "Local Produce Co",
-		"dairy": "Dairy Fresh",
-		"dry goods": "Restaurant Depot",
-		"alcohol": "Wine & Spirits Co",
-		"beverages": "Beverage Supply",
-		"supplies": "Restaurant Supply Co",
-	};
-
-	return supplierMap[category] || "General Supplier";
 }
 
 /**
@@ -380,9 +521,9 @@ export async function updateOrderStatus(orderId, newStatus) {
 	try {
 		const { data, error } = await supabase
 			.from("restaurant_orders")
-			.update({ 
+			.update({
 				status: newStatus,
-				updated_at: new Date().toISOString()
+				updated_at: new Date().toISOString(),
 			})
 			.eq("id", orderId)
 			.select()
@@ -410,9 +551,9 @@ export async function updateRestaurantOrder(orderId, updateData) {
 		if (notes !== undefined) {
 			const { error: orderError } = await supabase
 				.from("restaurant_orders")
-				.update({ 
+				.update({
 					notes,
-					updated_at: new Date().toISOString()
+					updated_at: new Date().toISOString(),
 				})
 				.eq("id", orderId);
 
@@ -424,7 +565,8 @@ export async function updateRestaurantOrder(orderId, updateData) {
 			let totalEstimatedValue = 0;
 
 			for (const item of items) {
-				const lineTotal = parseFloat(item.quantity) * parseFloat(item.estimated_unit_cost || 0);
+				const lineTotal =
+					parseFloat(item.quantity) * parseFloat(item.estimated_unit_cost || 0);
 				totalEstimatedValue += lineTotal;
 
 				const { error: itemError } = await supabase
@@ -434,7 +576,7 @@ export async function updateRestaurantOrder(orderId, updateData) {
 						unit: item.unit,
 						estimated_unit_cost: parseFloat(item.estimated_unit_cost || 0),
 						estimated_line_total: parseFloat(lineTotal.toFixed(2)),
-						updated_at: new Date().toISOString()
+						updated_at: new Date().toISOString(),
 					})
 					.eq("id", item.id);
 
@@ -444,9 +586,9 @@ export async function updateRestaurantOrder(orderId, updateData) {
 			// Update order total
 			const { error: totalError } = await supabase
 				.from("restaurant_orders")
-				.update({ 
+				.update({
 					total_estimated_value: parseFloat(totalEstimatedValue.toFixed(2)),
-					updated_at: new Date().toISOString()
+					updated_at: new Date().toISOString(),
 				})
 				.eq("id", orderId);
 

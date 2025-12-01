@@ -18,6 +18,7 @@ import wasteRoutes from "./routes/waste.js";
 import menuItemRoutes from "./routes/menuItemRoutes.js";
 import recipeRoutes from "./routes/recipeRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
+import vendorsRoutes from "./routes/vendors.js";
 // Load environment variables
 
 // Initialize Express app
@@ -58,6 +59,7 @@ app.use("/api/waste", wasteRoutes);
 app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/recipes", recipeRoutes);
 app.use("/api/quiz", quizRoutes);
+app.use("/api/vendors", vendorsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -85,4 +87,6 @@ app.listen(PORT, () => {
 	console.log(
 		`🗄️  Database: ${process.env.SUPABASE_URL ? "Connected" : "Not configured"}`
 	);
+	console.log(`🔄 Server started at: ${new Date().toISOString()}`);
+	console.log(`⚠️  TESTING: If you see this, nodemon reloaded the server`);
 });

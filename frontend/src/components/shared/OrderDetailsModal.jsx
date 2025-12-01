@@ -224,10 +224,6 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onOrderUpdat
 									<p className="text-lg font-semibold text-gray-900">{orderDetails.order_number}</p>
 								</div>
 								<div>
-									<label className="block text-sm font-medium text-gray-700">Type</label>
-									<p className="text-gray-900">{orderDetails.order_type.toUpperCase()}</p>
-								</div>
-								<div>
 									<label className="block text-sm font-medium text-gray-700">Created</label>
 									<p className="text-gray-900">{formatDate(orderDetails.created_at)}</p>
 								</div>

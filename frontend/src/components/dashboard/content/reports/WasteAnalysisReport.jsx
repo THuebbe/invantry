@@ -27,7 +27,7 @@ import {
 export default function WasteAnalysisReport() {
 	const [period, setPeriod] = useState("month");
 	const [compareEnabled, setCompareEnabled] = useState(false);
-	const [expandedSection, setExpandedSection] = useState(null);
+	const [activeTab, setActiveTab] = useState("category");
 	const [lastFetchTime, setLastFetchTime] = useState(null);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -113,16 +113,18 @@ export default function WasteAnalysisReport() {
 
 	return (
 		<div className="space-y-6">
-			{/* Page Header */}
+			{/* Page Header with Filters */}
 			<div className="bg-white rounded-lg border border-gray-200 p-6">
-				<div className="flex items-start justify-between mb-2">
+				<div className="flex items-start justify-between mb-4">
 					<div>
 						<h1 className="text-3xl font-bold text-gray-900">
 							Waste Analysis Report
 						</h1>
-						<p className="text-gray-600 mt-2">
-							Detailed breakdown of waste by category, reason, and item
-						</p>
+						{!isLoading && summary.waste && lastFetchTime && (
+							<p className="text-xs text-gray-500 mt-2">
+								{formatDataFetchTime(lastFetchTime)}
+							</p>
+						)}
 					</div>
 					<button
 						onClick={handleRefresh}
@@ -136,10 +138,8 @@ export default function WasteAnalysisReport() {
 						/>
 					</button>
 				</div>
-			</div>
 
-			{/* Date Range Picker */}
-			<div className="bg-white rounded-lg border border-gray-200 p-6">
+				{/* Date Range Picker */}
 				<DateRangePicker
 					selected={period}
 					onSelect={setPeriod}
@@ -242,60 +242,104 @@ export default function WasteAnalysisReport() {
 				</div>
 			)}
 
-			{/* Content Sections */}
+			{/* Tabbed Content Section */}
 			{!isError && summary.waste && (
-				<>
-					{/* Waste by Category */}
-					<div className="bg-white rounded-lg border border-gray-200 p-6">
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">
-							Waste by Category
-						</h2>
-						<BarChart
-							data={categoryChartData}
-							orientation="horizontal"
-							maxValue={Math.max(...categoryChartData.map((d) => d.value), 100)}
-							showValues={true}
-							loading={categoryQuery.isLoading}
-							emptyMessage="No category data available"
-						/>
+				<div className="bg-white rounded-lg border border-gray-200">
+					{/* Tab Navigation */}
+					<div className="border-b border-gray-200">
+						<div className="flex gap-8 px-6">
+							<button
+								onClick={() => setActiveTab("category")}
+								className={`py-4 text-sm font-medium transition-colors relative ${
+									activeTab === "category"
+										? "text-green-600"
+										: "text-gray-600 hover:text-gray-900"
+								}`}
+							>
+								By Category
+								{activeTab === "category" && (
+									<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600"></div>
+								)}
+							</button>
+							<button
+								onClick={() => setActiveTab("reason")}
+								className={`py-4 text-sm font-medium transition-colors relative ${
+									activeTab === "reason"
+										? "text-green-600"
+										: "text-gray-600 hover:text-gray-900"
+								}`}
+							>
+								By Reason
+								{activeTab === "reason" && (
+									<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600"></div>
+								)}
+							</button>
+							<button
+								onClick={() => setActiveTab("items")}
+								className={`py-4 text-sm font-medium transition-colors relative ${
+									activeTab === "items"
+										? "text-green-600"
+										: "text-gray-600 hover:text-gray-900"
+								}`}
+							>
+								Top Items
+								{activeTab === "items" && (
+									<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600"></div>
+								)}
+							</button>
+						</div>
 					</div>
 
-					{/* Waste by Reason */}
-					<div className="bg-white rounded-lg border border-gray-200 p-6">
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">
-							Waste by Reason
-						</h2>
-						<BarChart
-							data={reasonChartData}
-							orientation="vertical"
-							maxValue={Math.max(...reasonChartData.map((d) => d.value), 100)}
-							showValues={true}
-							height={300}
-							loading={reasonQuery.isLoading}
-							emptyMessage="No reason data available"
-						/>
-					</div>
+					{/* Tab Content */}
+					<div className="p-6">
+						{activeTab === "category" && (
+							<div>
+								<h2 className="text-lg font-semibold text-gray-900 mb-3">
+									Waste by Category
+								</h2>
+								<BarChart
+									data={categoryChartData}
+									orientation="horizontal"
+									maxValue={Math.max(...categoryChartData.map((d) => d.value), 100)}
+									showValues={true}
+									loading={categoryQuery.isLoading}
+									emptyMessage="No category data available"
+								/>
+							</div>
+						)}
 
-					{/* Top Wasted Items Table */}
-					<div className="bg-white rounded-lg border border-gray-200 p-6">
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">
-							Top 20 Wasted Items
-						</h2>
-						<DataTable
-							columns={tableColumns}
-							data={tableData}
-							loading={itemsQuery.isLoading}
-							defaultSort={{ column: "total_value", direction: "desc" }}
-							emptyMessage="No items wasted in this period"
-						/>
-					</div>
-				</>
-			)}
+						{activeTab === "reason" && (
+							<div>
+								<h2 className="text-lg font-semibold text-gray-900 mb-3">
+									Waste by Reason
+								</h2>
+								<BarChart
+									data={reasonChartData}
+									orientation="vertical"
+									maxValue={Math.max(...reasonChartData.map((d) => d.value), 100)}
+									showValues={true}
+									height={300}
+									loading={reasonQuery.isLoading}
+									emptyMessage="No reason data available"
+								/>
+							</div>
+						)}
 
-			{/* Data Info Footer */}
-			{!isLoading && summary.waste && lastFetchTime && (
-				<div className="text-xs text-gray-500 text-center py-4">
-					{formatDataFetchTime(lastFetchTime)}
+						{activeTab === "items" && (
+							<div>
+								<h2 className="text-lg font-semibold text-gray-900 mb-3">
+									Top 20 Wasted Items
+								</h2>
+								<DataTable
+									columns={tableColumns}
+									data={tableData}
+									loading={itemsQuery.isLoading}
+									defaultSort={{ column: "total_value", direction: "desc" }}
+									emptyMessage="No items wasted in this period"
+								/>
+							</div>
+						)}
+					</div>
 				</div>
 			)}
 		</div>

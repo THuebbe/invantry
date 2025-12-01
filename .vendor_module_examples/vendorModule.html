@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			/* Simple styling for the draft */
+			body {
+				font-family: -apple-system, system-ui, sans-serif;
+				background: #f3f4f6;
+				color: #1f2937;
+				margin: 0;
+			}
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 20px;
+			}
+
+			/* Header */
+			.header {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 20px;
+			}
+			.vendor-title h1 {
+				margin: 0;
+				font-size: 1.5rem;
+			}
+			.vendor-sub {
+				color: #6b7280;
+				font-size: 0.9rem;
+			}
+			.badge {
+				background: #d1fae5;
+				color: #065f46;
+				padding: 4px 8px;
+				border-radius: 4px;
+				font-size: 0.8rem;
+				font-weight: bold;
+			}
+
+			/* Tabs */
+			.tabs {
+				display: flex;
+				border-bottom: 2px solid #e5e7eb;
+				margin-bottom: 20px;
+			}
+			.tab {
+				padding: 10px 20px;
+				cursor: pointer;
+				color: #6b7280;
+				font-weight: 500;
+			}
+			.tab.active {
+				border-bottom: 2px solid #2563eb;
+				color: #2563eb;
+			}
+
+			/* Grid Layout */
+			.grid-2 {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 20px;
+			}
+			.card {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				border: 1px solid #e5e7eb;
+			}
+			.card h3 {
+				margin-top: 0;
+				border-bottom: 1px solid #eee;
+				padding-bottom: 10px;
+				font-size: 1.1rem;
+			}
+
+			/* Form Groups */
+			.form-group {
+				margin-bottom: 15px;
+			}
+			.label {
+				display: block;
+				font-size: 0.85rem;
+				color: #6b7280;
+				margin-bottom: 5px;
+			}
+			.value {
+				font-weight: 500;
+				font-size: 1rem;
+			}
+
+			/* Tables */
+			table {
+				width: 100%;
+				border-collapse: collapse;
+			}
+			th {
+				text-align: left;
+				padding: 12px;
+				background: #f9fafb;
+				font-size: 0.85rem;
+				color: #6b7280;
+			}
+			td {
+				padding: 12px;
+				border-top: 1px solid #e5e7eb;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<div class="vendor-title">
+					<div style="display: flex; align-items: center; gap: 10px">
+						<h1>Acme Industrial Supply</h1>
+						<span class="badge">ACTIVE</span>
+					</div>
+					<div class="vendor-sub">VEND-00123 • Trade Name: Acme Corp</div>
+				</div>
+				<div class="actions">
+					<button
+						style="
+							padding: 8px 16px;
+							border: 1px solid #d1d5db;
+							background: white;
+							border-radius: 4px;
+							cursor: pointer;
+						"
+					>
+						Actions ▼
+					</button>
+					<button
+						style="
+							padding: 8px 16px;
+							background: #2563eb;
+							color: white;
+							border: none;
+							border-radius: 4px;
+							cursor: pointer;
+						"
+					>
+						Edit Vendor
+					</button>
+				</div>
+			</div>
+
+			<div class="tabs">
+				<div class="tab active">Overview</div>
+				<div class="tab">Financials</div>
+				<div class="tab">Purchasing Defaults</div>
+				<div class="tab">Item Catalog</div>
+				<div class="tab">Documents & Risk</div>
+			</div>
+
+			<div class="grid-2">
+				<div style="display: flex; flex-direction: column; gap: 20px">
+					<div class="card">
+						<h3>General Details</h3>
+						<div class="grid-2">
+							<div class="form-group">
+								<span class="label">Vendor Group</span>
+								<div class="value">Raw Materials</div>
+							</div>
+							<div class="form-group">
+								<span class="label">Currency</span>
+								<div class="value">USD ($)</div>
+							</div>
+							<div class="form-group">
+								<span class="label">Website</span>
+								<div class="value"><a href="#">acme.com</a></div>
+							</div>
+							<div class="form-group">
+								<span class="label">Tax ID (EIN)</span>
+								<div class="value">••-•••6789</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="card">
+						<h3>Primary Addresses</h3>
+						<div class="form-group">
+							<span class="label">Billing Address</span>
+							<div class="value">
+								123 Industrial Pkwy, Suite 400<br />Chicago, IL 60601
+							</div>
+						</div>
+						<hr
+							style="border: 0; border-top: 1px dashed #eee; margin: 10px 0"
+						/>
+						<div class="form-group">
+							<span class="label">Shipping Origin</span>
+							<div class="value">Warehouse 9<br />Gary, IN 46402</div>
+						</div>
+					</div>
+				</div>
+
+				<div style="display: flex; flex-direction: column; gap: 20px">
+					<div class="card">
+						<div style="display: flex; justify-content: space-between">
+							<h3>Contacts</h3>
+							<a
+								href="#"
+								style="font-size: 0.8rem; color: #2563eb"
+								>View All</a
+							>
+						</div>
+						<table>
+							<thead>
+								<tr>
+									<th>Name</th>
+									<th>Role</th>
+									<th>Email</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>Jane Doe</td>
+									<td>Sales Rep</td>
+									<td>jane@acme...</td>
+								</tr>
+								<tr>
+									<td>Acme AR</td>
+									<td>Billing</td>
+									<td>ar@acme...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<div class="card">
+						<h3>Quick Metrics</h3>
+						<div class="grid-2">
+							<div class="form-group">
+								<span class="label">On-Time Delivery</span>
+								<div
+									class="value"
+									style="color: green"
+								>
+									94%
+								</div>
+							</div>
+							<div class="form-group">
+								<span class="label">Open Orders</span>
+								<div class="value">3 POs ($12,400)</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

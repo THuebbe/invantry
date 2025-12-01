@@ -1,20 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git log:*)",
-      "Bash(nul)",
-      "Bash(rm:*)",
-      "Bash(npm install:*)",
-      "Bash(npm test:*)",
-      "Bash(npm run test:coverage:*)",
-      "Bash(dir:*)",
-      "Read(//mnt/c/Users/thueb/OneDrive/Desktop/**)",
-      "Bash(cd:*)",
-      "Bash(npm run dev:*)",
-      "Bash(bg_output:*)",
-      "Bash(curl:*)",
-      "Bash(npm run build:*)",
-      "Bash(node:*)"
+      "Bash(git config:*)"
     ],
     "deny": [],
     "ask": []

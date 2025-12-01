@@ -1,5 +1,5 @@
 import { hook } from "../../../config/valueProps.js";
-import dashboard_screenshot from "../../../../public/dashboard_screenshot.jpg";
+import dashboard_screenshot from "../../../../src/dashboard_screenshot.jpg";
 
 export default function Hook() {
 	const [section] = hook;

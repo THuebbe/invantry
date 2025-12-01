@@ -37,8 +37,8 @@ export default function Dashboard() {
 				</div>
 
 				{/* Rows 2 & 3: Main Content + Metrics */}
-				<div className="grid grid-cols-4 gap-4 flex-1">
-					<div className="col-span-3 overflow-y-auto">
+				<div className="grid grid-cols-4 gap-4 flex-1 min-h-0">
+					<div className="col-span-3 flex flex-col min-h-0">
 						<MainContent />
 					</div>
 

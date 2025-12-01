@@ -1,0 +1,31 @@
+{
+  "feature_id": "FEATURE-20251125-ORDER-ENTRY",
+  "name": "Order Entry & Purchase Order Management",
+  "description": "Create Order Entry and Purchase Order Entry menus for the ordering of goods, with split-view layout showing line items and detail panels",
+  "status": "in_progress",
+  "initiated_at": "2025-11-25T17:08:00Z",
+  "last_updated": "2025-11-26T13:00:00Z",
+  "product_manager": {
+    "conversations_held": 2,
+    "user_stories_count": 4,
+    "acceptance_criteria_count": 25,
+    "ready_for_sprint": true
+  },
+  "scrum_master": {
+    "sprint_id": "SPRINT-ORDER-ENTRY-SPLITVIEW",
+    "status": "in_progress",
+    "sprint_plan": ".project/sprints/SPRINT-ORDER-ENTRY-SPLITVIEW.md",
+    "current_phase": "Phase 3 - Testing & Polish",
+    "progress": "82%",
+    "tasks_completed": 9,
+    "tasks_total": 13
+  },
+  "implementation": {
+    "backend_complete": true,
+    "frontend_complete": true,
+    "database_migrations": "in_progress",
+    "testing": "pending",
+    "documentation": "pending"
+  },
+  "notes": "Phases 1 & 2 complete (backend + frontend). Database migrations being run by user in Supabase. 2 migration issues encountered and fixed. Ready for Phase 3 testing after migration verification."
+}
