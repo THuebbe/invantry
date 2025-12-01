@@ -6,8 +6,10 @@ import CreateCustomOrder from "./orders/CreateCustomOrder";
 import ViewPurchaseOrders from "./orders/ViewPurchaseOrders";
 import CreateQuickPOs from "./orders/CreateQuickPOs";
 import CreateCustomPO from "./orders/CreateCustomPO";
+import ReceivePurchaseOrder from "./orders/ReceivePurchaseOrder";
+import EditPurchaseOrder from "./orders/EditPurchaseOrder";
 
-export default function OrdersContent({ subsection }) {
+export default function OrdersContent({ subsection, params }) {
 	// Route to specific order component based on subsection
 	switch (subsection) {
 		case "view-orders":
@@ -22,6 +24,10 @@ export default function OrdersContent({ subsection }) {
 			return <CreateQuickPOs />;
 		case "create-custom-po":
 			return <CreateCustomPO />;
+		case "receive-po":
+			return <ReceivePurchaseOrder poId={params?.poId} />;
+		case "edit-po":
+			return <EditPurchaseOrder poId={params?.poId} />;
 		default:
 			return <OrdersOverview />;
 	}

@@ -1,344 +1,1015 @@
 // frontend/src/components/dashboard/content/orders/CreateQuickPOs.jsx
 
 import { useState, useEffect } from "react";
+import {
+	Plus,
+	RefreshCw,
+	Calendar,
+	Hash,
+	Truck,
+	MapPin,
+	FileText,
+	Save,
+	Send
+} from "lucide-react";
 import { useAuth } from "../../../../core/auth/useAuth";
-import api from "../../../../core/database/api";
+import {
+	populatePOLines,
+	createPOFromOrderItems,
+	getVendors,
+	getIngredientLibrary
+} from "../../../../services/ordersService";
+import OrderLineItem from "../../../orders/OrderLineItem";
+import ItemDetailsPanel from "../../../orders/ItemDetailsPanel";
+import AddressInputModal, { formatAddressStreet } from "../../../orders/AddressInputModal";
+import CreateItemModal from "../../../orders/CreateItemModal";
 
+/**
+ * CreateQuickPOs - Enhanced PO creation with split-view UI
+ *
+ * Features:
+ * - Header with PO metadata (vendor, ship to, bill to)
+ * - "Populate Lines" button to auto-add open order items
+ * - Line items showing source Order # for each item
+ * - Item Details panel for selected item
+ * - Address input modals
+ */
 export default function CreateQuickPOs() {
-	const [pendingOrders, setPendingOrders] = useState([]);
-	const [vendorGroups, setVendorGroups] = useState({});
-	const [loading, setLoading] = useState(true);
-	const [creating, setCreating] = useState(false);
-	const [error, setError] = useState(null);
-	const [success, setSuccess] = useState(null);
-	const [selectedVendors, setSelectedVendors] = useState(new Set());
-
 	const { user } = useAuth();
 
+	// PO header state
+	const [poHeader, setPoHeader] = useState({
+		poNumber: "", // Auto-generated on submit
+		vendorId: "",
+		shipTo: null,
+		billTo: null,
+		orderDate: new Date().toISOString().split("T")[0],
+		requiredDate: "",
+	});
+
+	// Address modal state
+	const [addressModal, setAddressModal] = useState({
+		isOpen: false,
+		type: null, // "shipTo" or "billTo"
+	});
+
+	// Line items state
+	const [lineItems, setLineItems] = useState([createEmptyLineItem(1)]);
+
+	// Selected item state
+	const [selectedLineIndex, setSelectedLineIndex] = useState(null);
+
+	// Available items and vendors
+	const [availableItems, setAvailableItems] = useState([]);
+	const [vendors, setVendors] = useState([]);
+
+	// Modals
+	const [showCreateItemModal, setShowCreateItemModal] = useState(false);
+	const [createItemInitialName, setCreateItemInitialName] = useState("");
+
+	// Loading & error states
+	const [loading, setLoading] = useState(true);
+	const [populating, setPopulating] = useState(false);
+	const [submitting, setSubmitting] = useState(false);
+	const [error, setError] = useState(null);
+	const [success, setSuccess] = useState(false);
+	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+	// Vendor PO tabs state (always-on tabs, even for single vendor)
+	const [vendorTabs, setVendorTabs] = useState([]);
+	const [activeVendorTab, setActiveVendorTab] = useState(0);
+
+	// Fetch initial data on mount
 	useEffect(() => {
-		fetchPendingOrders();
+		fetchInitialData();
 	}, []);
 
-	const fetchPendingOrders = async () => {
+	// Track unsaved changes
+	useEffect(() => {
+		const hasContent = vendorTabs.length > 0
+			? vendorTabs.some(tab => tab.lineItems?.some(line => line.itemName || line.qty))
+			: lineItems.some(line => line.itemName || line.qty);
+		setHasUnsavedChanges(hasContent && !success);
+	}, [lineItems, vendorTabs, success]);
+
+	// Warn before navigation with unsaved changes
+	useEffect(() => {
+		const handleBeforeUnload = (e) => {
+			if (hasUnsavedChanges) {
+				e.preventDefault();
+				e.returnValue = '';
+			}
+		};
+
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+	}, [hasUnsavedChanges]);
+
+	const fetchInitialData = async () => {
 		try {
 			setLoading(true);
-			const response = await api.get("/orders/pending-for-pos");
-			const orders = response.data || [];
-			setPendingOrders(orders);
-
-			// Group order items by vendor/supplier
-			const groups = {};
-			orders.forEach((order) => {
-				order.items?.forEach((item) => {
-					const vendor = item.supplier_name || "Unassigned Supplier";
-					if (!groups[vendor]) {
-						groups[vendor] = {
-							vendor,
-							orders: new Set(),
-							items: [],
-							totalValue: 0,
-						};
-					}
-					groups[vendor].orders.add(order.order_number);
-					groups[vendor].items.push({
-						...item,
-						source_order_id: order.id,
-						source_order_number: order.order_number,
-					});
-					groups[vendor].totalValue += item.estimated_line_total || 0;
-				});
-			});
-
-			// Convert Sets to arrays for rendering
-			Object.values(groups).forEach((group) => {
-				group.orders = Array.from(group.orders);
-			});
-
-			setVendorGroups(groups);
-
-			// Select all vendors by default
-			setSelectedVendors(new Set(Object.keys(groups)));
+			await Promise.all([fetchIngredientLibrary(), fetchVendors()]);
 		} catch (err) {
-			console.error("Error fetching pending orders:", err);
-			setError(err.response?.data?.error || "Failed to load pending orders");
+			console.error("Error fetching initial data:", err);
+			setError("Failed to load initial data");
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const toggleVendorSelection = (vendor) => {
-		setSelectedVendors((prev) => {
-			const newSet = new Set(prev);
-			if (newSet.has(vendor)) {
-				newSet.delete(vendor);
-			} else {
-				newSet.add(vendor);
-			}
-			return newSet;
-		});
+	const fetchIngredientLibrary = async () => {
+		try {
+			const items = await getIngredientLibrary();
+			const transformedItems = items.map((item) => ({
+				id: item.ingredient_id,
+				name: item.ingredient_name,
+				category: item.category,
+				itemNumber: item.ingredient?.item_number,
+				upc: item.ingredient?.upc,
+				unit: item.unit,
+				costPerUnit: item.cost_per_unit,
+				preferredVendor: item.ingredient?.preferred_vendor,
+				pkgQty: item.ingredient?.pkg_qty || 1,
+				pkgUom: item.ingredient?.pkg_uom || item.unit,
+				itemsPerPkg: item.ingredient?.items_per_pkg || 1,
+				itemQty: item.ingredient?.item_qty,
+				itemUom: item.ingredient?.item_uom,
+			}));
+			setAvailableItems(transformedItems);
+		} catch (err) {
+			console.error("Error fetching ingredient library:", err);
+		}
 	};
 
-	const createPurchaseOrders = async () => {
-		if (selectedVendors.size === 0) {
-			setError("Please select at least one vendor to create purchase orders");
-			return;
-		}
-
+	const fetchVendors = async () => {
 		try {
-			setCreating(true);
+			const vendorList = await getVendors();
+			setVendors(vendorList);
+		} catch (err) {
+			console.error("Error fetching vendors:", err);
+		}
+	};
+
+	// Create empty line item helper
+	function createEmptyLineItem(lineNumber) {
+		return {
+			id: `line-${Date.now()}-${lineNumber}`,
+			lineNumber,
+			ingredientId: null,
+			itemName: "",
+			itemNumber: null,
+			upc: null,
+			qty: "",
+			uom: "",
+			cost: "",
+			category: "",
+			vendor: "",
+			pkgQty: null,
+			pkgUom: "",
+			itemsPerPkg: null,
+			itemQty: null,
+			itemUom: "",
+			notes: "",
+			sourceOrderNumber: null,
+			quoteNumber: "",
+			invoiceNumber: "",
+		};
+	}
+
+	// Handle line item change
+	const handleLineItemChange = (index, updatedItem) => {
+		if (vendorTabs.length > 0) {
+			setVendorTabs((prev) => {
+				const newTabs = [...prev];
+				newTabs[activeVendorTab].lineItems[index] = {
+					...newTabs[activeVendorTab].lineItems[index],
+					...updatedItem
+				};
+				return newTabs;
+			});
+		} else {
+			setLineItems((prev) => {
+				const newItems = [...prev];
+				newItems[index] = { ...newItems[index], ...updatedItem };
+				return newItems;
+			});
+		}
+	};
+
+	// Handle line item completion
+	const handleLineComplete = (index) => {
+		const items = vendorTabs.length > 0 ? vendorTabs[activeVendorTab].lineItems : lineItems;
+		const currentItem = items[index];
+
+		if (currentItem.itemName && currentItem.qty) {
+			const nextLine = items[index + 1];
+
+			if (!nextLine) {
+				const newLineNumber = items.length + 1;
+				if (vendorTabs.length > 0) {
+					setVendorTabs((prev) => {
+						const newTabs = [...prev];
+						newTabs[activeVendorTab].lineItems.push(createEmptyLineItem(newLineNumber));
+						return newTabs;
+					});
+				} else {
+					setLineItems((prev) => [...prev, createEmptyLineItem(newLineNumber)]);
+				}
+			}
+
+			setSelectedLineIndex(index + 1);
+		}
+	};
+
+	// Handle populate lines (auto-add open order items for this vendor)
+	const handlePopulateLines = async () => {
+		try {
+			setPopulating(true);
 			setError(null);
 
-			const results = [];
-			
-			for (const vendor of selectedVendors) {
-				const group = vendorGroups[vendor];
-				
-				const poData = {
-					supplierName: vendor,
-					expectedDeliveryDate: null, // Can be set later
-					notes: `Auto-generated PO from orders: ${group.orders.join(", ")}`,
-					orderItemIds: group.items.map(item => item.id), // Use order item IDs for linking
-				};
-
-				const response = await api.post("/orders/from-order-items", poData);
-				results.push({
-					vendor,
-					poNumber: response.data.purchaseOrder.order_number, // Fixed path to PO number
-					success: true,
-				});
+			const restaurantId = user?.restaurantId || user?.businessId;
+			if (!restaurantId) {
+				throw new Error("No restaurant ID found");
 			}
 
-			setSuccess({
-				message: `Successfully created ${results.length} purchase order(s)`,
-				details: results,
-			});
+			const vendorId = poHeader.vendorId || null;
+			const result = await populatePOLines(restaurantId, vendorId);
 
-			// Refresh the pending orders list
-			setTimeout(() => {
-				fetchPendingOrders();
-			}, 1000);
+			console.log('📦 Populate PO Lines Result:', { vendorId, result });
 
+			// Handle different response formats
+			if (vendorId) {
+				// Single vendor mode - result is flat array of items
+				if (result.length === 0) {
+					setError("No open order items found for this vendor.");
+					return;
+				}
+
+				console.log(`📦 Found single vendor - creating 1 tab`);
+
+				// Get vendor name from vendors list
+				const selectedVendor = vendors.find(v => v.id === vendorId);
+				const vendorName = selectedVendor?.name || 'Selected Vendor';
+
+				// Create single-vendor tab structure
+				const itemsToAdd = result;
+				const vendorItems = itemsToAdd.map((item, idx) => ({
+					...createEmptyLineItem(idx + 1),
+					orderItemId: item.id,
+					ingredientId: item.ingredient_id,
+					itemName: item.ingredient_name,
+					itemNumber: item.item_number,
+					upc: item.upc,
+					qty: item.quantity,
+					uom: item.unit,
+					cost: item.estimated_unit_cost || 0,
+					category: item.category,
+					vendor: item.vendor_name || item.vendor,
+					sourceOrderNumber: item.order_number,
+					pkgQty: item.pkg_qty,
+					pkgUom: item.pkg_uom,
+					itemsPerPkg: item.items_per_pkg,
+					itemQty: item.item_qty,
+					itemUom: item.item_uom,
+				}));
+
+				const singleTab = {
+					vendorId: vendorId,
+					vendorName: vendorName,
+					lineItems: [...vendorItems, createEmptyLineItem(vendorItems.length + 1)],
+					poHeader: {
+						vendorId: vendorId,
+						shipTo: null,
+						billTo: null,
+						orderDate: new Date().toISOString().split("T")[0],
+						requiredDate: "",
+					},
+					itemCount: vendorItems.length
+				};
+
+				setVendorTabs([singleTab]);
+				setActiveVendorTab(0);
+
+				console.log(`📦 Created single vendor tab for ${vendorName}`);
+			} else {
+				// Multi-vendor mode - result is array of {vendor_name, vendor_id, items[]}
+				if (!result || result.length === 0) {
+					setError("No open order items found.");
+					return;
+				}
+
+				console.log(`📦 Found ${result.length} vendors - creating ${result.length} tabs`);
+				console.log('📦 Backend vendor groups:', JSON.stringify(result, null, 2));
+
+				// Create tabs for all vendors
+				const tabs = result.map((vendorGroup, vendorIdx) => {
+					console.log(`\n📦 Processing vendor ${vendorIdx}: ${vendorGroup.vendor_name}`);
+					console.log(`📦 Vendor has ${vendorGroup.items.length} items`);
+
+					const vendorItems = vendorGroup.items.map((item, idx) => {
+						const emptyLine = createEmptyLineItem(idx + 1);
+						const lineItem = {
+							...emptyLine,
+							orderItemId: item.id,
+							ingredientId: item.ingredient_id,
+							itemName: item.ingredient_name,
+							itemNumber: item.item_number,
+							upc: item.upc,
+							qty: item.quantity,
+							uom: item.unit,
+							cost: item.estimated_unit_cost || 0,
+							category: item.category,
+							vendor: item.vendor_name || item.vendor,
+							sourceOrderNumber: item.order_number,
+							pkgQty: item.pkg_qty,
+							pkgUom: item.pkg_uom,
+							itemsPerPkg: item.items_per_pkg,
+							itemQty: item.item_qty,
+							itemUom: item.item_uom,
+						};
+
+						console.log(`  📦 Line ${idx + 1}: ${item.ingredient_name} (${item.quantity} ${item.unit}) - Backend item.id: ${item.id}`);
+						console.log(`     - emptyLine.itemName: "${emptyLine.itemName}"`);
+						console.log(`     - item.ingredient_name: "${item.ingredient_name}"`);
+						console.log(`     - lineItem.itemName: "${lineItem.itemName}"`);
+
+						return lineItem;
+					});
+
+					const tab = {
+						vendorId: vendorGroup.vendor_id,
+						vendorName: vendorGroup.vendor_name,
+						lineItems: [...vendorItems, createEmptyLineItem(vendorItems.length + 1)],
+						poHeader: {
+							vendorId: vendorGroup.vendor_id,
+							shipTo: null,
+							billTo: null,
+							orderDate: new Date().toISOString().split("T")[0],
+							requiredDate: "",
+						},
+						itemCount: vendorGroup.items.length
+					};
+
+					console.log(`📦 Created tab for ${tab.vendorName} with ${tab.lineItems.length} line items`);
+					return tab;
+				});
+
+				console.log(`\n📦 SETTING STATE - About to set ${tabs.length} vendor tabs`);
+				setVendorTabs(tabs);
+				setActiveVendorTab(0); // Select first tab
+
+				// Log FINAL tab state before setting
+				console.log(`\n📦 FINAL TAB STATE BEFORE RENDER:`);
+				tabs.forEach((tab, i) => {
+					console.log(`\n📦 Tab ${i} - ${tab.vendorName}:`);
+					console.log(`   Vendor ID: ${tab.vendorId}`);
+					console.log(`   Item Count: ${tab.lineItems.length}`);
+					console.log(`   Line Items:`);
+					tab.lineItems.forEach((item, lineIdx) => {
+						if (item.itemName) {  // Only log filled items
+							console.log(`     [${lineIdx}] ${item.itemName} - ${item.qty} ${item.uom} @ $${item.cost}`);
+						}
+					});
+				});
+
+				// Use setTimeout to log state AFTER React renders
+				setTimeout(() => {
+					console.log(`\n📦 POST-RENDER CHECK - Tabs in state:`, tabs.length);
+				}, 100);
+			}
 		} catch (err) {
-			console.error("Error creating purchase orders:", err);
-			setError(err.response?.data?.error || "Failed to create purchase orders");
+			console.error("Error populating PO lines:", err);
+			setError(err.response?.data?.error || err.message || "Failed to populate lines");
 		} finally {
-			setCreating(false);
+			setPopulating(false);
 		}
 	};
 
+	// Handle creating new item from search
+	const handleCreateNewItem = (searchQuery) => {
+		setCreateItemInitialName(searchQuery);
+		setShowCreateItemModal(true);
+	};
+
+	// Handle new item created
+	const handleNewItemCreated = async (newItemData) => {
+		const newItem = {
+			id: `temp-${Date.now()}`,
+			name: newItemData.name,
+			category: newItemData.category,
+			itemNumber: newItemData.itemNumber,
+			upc: newItemData.upc,
+			unit: newItemData.unit,
+			costPerUnit: parseFloat(newItemData.costPerUnit) || 0,
+			preferredVendor: newItemData.preferredVendor,
+			pkgQty: parseInt(newItemData.pkgQty) || 1,
+			pkgUom: newItemData.pkgUom || newItemData.unit,
+			itemsPerPkg: parseInt(newItemData.itemsPerPkg) || 1,
+			itemQty: parseFloat(newItemData.itemQty),
+			itemUom: newItemData.itemUom,
+		};
+
+		setAvailableItems((prev) => [...prev, newItem]);
+	};
+
+	// Handle header field changes
+	const handleHeaderChange = (field, value) => {
+		if (vendorTabs.length > 0) {
+			setVendorTabs((prev) => {
+				const newTabs = [...prev];
+				newTabs[activeVendorTab].poHeader = {
+					...newTabs[activeVendorTab].poHeader,
+					[field]: value
+				};
+				return newTabs;
+			});
+		} else {
+			setPoHeader((prev) => ({
+				...prev,
+				[field]: value,
+			}));
+		}
+	};
+
+	// Handle address save
+	const handleAddressSave = (address) => {
+		setPoHeader((prev) => ({
+			...prev,
+			[addressModal.type]: address,
+		}));
+	};
+
+	// Open address modal
+	const openAddressModal = (type) => {
+		setAddressModal({ isOpen: true, type });
+	};
+
+	// Handle updating item from details panel
+	const handleUpdateFromPanel = (updatedItem) => {
+		if (selectedLineIndex !== null) {
+			handleLineItemChange(selectedLineIndex, updatedItem);
+		}
+	};
+
+	// Calculate totals
+	const calculateTotals = () => {
+		const filledLines = lineItems.filter((line) => line.itemName && line.qty && line.cost);
+		const subtotal = filledLines.reduce((sum, line) => {
+			return sum + (parseFloat(line.qty) || 0) * (parseFloat(line.cost) || 0);
+		}, 0);
+		const tax = subtotal * 0.09; // 9% tax
+		const total = subtotal + tax;
+
+		return {
+			lineCount: filledLines.length,
+			subtotal: subtotal.toFixed(2),
+			tax: tax.toFixed(2),
+			total: total.toFixed(2),
+		};
+	};
+
+	const totals = calculateTotals();
+
+	// Handle submit PO
+	const handleSubmitPO = async () => {
+		try {
+			setSubmitting(true);
+			setError(null);
+
+			// Validate
+			const filledLines = lineItems.filter((line) => line.itemName && line.qty);
+			if (filledLines.length === 0) {
+				setError("Please add at least one item to the purchase order");
+				return;
+			}
+
+			if (!poHeader.vendorId) {
+				setError("Please specify a vendor");
+				return;
+			}
+
+			const restaurantId = user?.restaurantId || user?.businessId;
+			if (!restaurantId) {
+				throw new Error("No restaurant ID found");
+			}
+
+			// Get vendor name from vendors list
+			const selectedVendor = vendors.find(v => v.id === poHeader.vendorId);
+			const supplierName = selectedVendor?.name || 'Unknown Supplier';
+
+			// Prepare PO data with orderItemIds
+			const poData = {
+				supplierName,
+				supplierId: poHeader.vendorId,
+				expectedDeliveryDate: poHeader.requiredDate || null,
+				notes: null,
+				orderItemIds: filledLines.map((line) => line.orderItemId).filter(Boolean),
+			};
+
+			await createPOFromOrderItems(poData);
+
+			setSuccess(true);
+			setTimeout(() => {
+				// Navigate back to PO list
+				window.history.pushState({}, "", "/orders/purchase-orders");
+				window.dispatchEvent(new PopStateEvent("popstate"));
+			}, 2000);
+		} catch (err) {
+			console.error("Error creating PO:", err);
+			setError(err.response?.data?.error || err.message || "Failed to create purchase order");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	// Helper function to submit a single tab's PO
+	const submitPOForTab = async (tab, status = 'submitted') => {
+		const filledLines = tab.lineItems.filter((line) => line.itemName && line.qty);
+		if (filledLines.length === 0) {
+			throw new Error(`No items in PO for ${tab.vendorName}`);
+		}
+
+		const restaurantId = user?.restaurantId || user?.businessId;
+		if (!restaurantId) {
+			throw new Error("No restaurant ID found");
+		}
+
+		// Prepare PO data with orderItemIds
+		const poData = {
+			supplierName: tab.vendorName,
+			supplierId: tab.vendorId,
+			expectedDeliveryDate: tab.poHeader.requiredDate || null,
+			notes: null,
+			status: status,
+			orderItemIds: filledLines.map((line) => line.orderItemId).filter(Boolean),
+		};
+
+		return await createPOFromOrderItems(poData);
+	};
+
+	// Submit only the current tab's PO
+	const handleSubmitSinglePO = async () => {
+		try {
+			setSubmitting(true);
+			setError(null);
+
+			const currentTab = vendorTabs[activeVendorTab];
+			await submitPOForTab(currentTab, 'submitted');
+
+			// Remove this tab from the list
+			const newTabs = vendorTabs.filter((_, idx) => idx !== activeVendorTab);
+
+			if (newTabs.length === 0) {
+				// All tabs submitted - show success and navigate
+				setSuccess(true);
+				setTimeout(() => {
+					window.history.pushState({}, "", "/orders/purchase-orders");
+					window.dispatchEvent(new PopStateEvent("popstate"));
+				}, 2000);
+			} else {
+				// More tabs remaining - remove current tab and switch to first tab
+				setVendorTabs(newTabs);
+				setActiveVendorTab(0);
+				setSuccess(true);
+				setTimeout(() => setSuccess(false), 2000);
+			}
+		} catch (err) {
+			console.error("Error creating PO:", err);
+			setError(err.response?.data?.error || err.message || "Failed to create purchase order");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	// Submit all tabs as POs
+	const handleSubmitAllPOs = async () => {
+		try {
+			setSubmitting(true);
+			setError(null);
+
+			let successCount = 0;
+			const errors = [];
+
+			for (const tab of vendorTabs) {
+				try {
+					await submitPOForTab(tab, 'submitted');
+					successCount++;
+				} catch (err) {
+					errors.push(`${tab.vendorName}: ${err.message}`);
+				}
+			}
+
+			if (errors.length > 0) {
+				setError(`Created ${successCount} POs. Errors: ${errors.join('; ')}`);
+			} else {
+				setSuccess(true);
+				setTimeout(() => {
+					window.history.pushState({}, "", "/orders/purchase-orders");
+					window.dispatchEvent(new PopStateEvent("popstate"));
+				}, 2000);
+			}
+		} catch (err) {
+			console.error("Error creating POs:", err);
+			setError(err.message || "Failed to create purchase orders");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	// Save all tabs as draft POs
+	const handleSaveAllAsDraft = async () => {
+		try {
+			setSubmitting(true);
+			setError(null);
+
+			let successCount = 0;
+			const errors = [];
+
+			for (const tab of vendorTabs) {
+				try {
+					await submitPOForTab(tab, 'draft');
+					successCount++;
+				} catch (err) {
+					errors.push(`${tab.vendorName}: ${err.message}`);
+				}
+			}
+
+			if (errors.length > 0) {
+				setError(`Saved ${successCount} draft POs. Errors: ${errors.join('; ')}`);
+			} else {
+				setSuccess(true);
+				setTimeout(() => {
+					window.history.pushState({}, "", "/orders/purchase-orders");
+					window.dispatchEvent(new PopStateEvent("popstate"));
+				}, 2000);
+			}
+		} catch (err) {
+			console.error("Error saving draft POs:", err);
+			setError(err.message || "Failed to save draft purchase orders");
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	// Loading state
 	if (loading) {
 		return (
 			<div className="bg-white rounded-lg border border-gray-200 p-6">
-				<h2 className="text-2xl font-bold text-gray-900 mb-4">
-					Create Quick Purchase Orders
-				</h2>
+				<h2 className="text-2xl font-bold text-gray-900 mb-4">Create Quick PO</h2>
 				<div className="animate-pulse space-y-4">
 					{[1, 2, 3].map((i) => (
-						<div key={i} className="h-20 bg-gray-200 rounded"></div>
+						<div key={i} className="h-16 bg-gray-200 rounded"></div>
 					))}
 				</div>
 			</div>
 		);
 	}
 
-	return (
-		<div className="bg-white rounded-lg border border-gray-200 p-6">
-			<div className="flex justify-between items-center mb-6">
-				<h2 className="text-2xl font-bold text-gray-900">
-					Create Quick Purchase Orders
-				</h2>
-				<button
-					onClick={() => window.history.pushState({}, "", "/orders")}
-					className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-				>
-					← Back to Orders
-				</button>
-			</div>
-
-			<div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-				<p className="text-green-800">
-					<strong>Quick Purchase Orders:</strong> This will automatically create
-					purchase orders for all pending orders that don't have POs yet,
-					grouping items by supplier/vendor. Select which vendors you want to
-					create POs for.
-				</p>
-			</div>
-
-			{error && (
-				<div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-					<p className="text-red-700">{error}</p>
-				</div>
-			)}
-
-			{success && (
-				<div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-					<p className="text-green-700 font-medium">{success.message}</p>
-					<div className="mt-2 space-y-1">
-						{success.details.map((result, index) => (
-							<p key={index} className="text-sm text-green-600">
-								• {result.vendor}: PO #{result.poNumber}
-							</p>
-						))}
-					</div>
-				</div>
-			)}
-
-			{Object.keys(vendorGroups).length === 0 ? (
+	// Success state
+	if (success) {
+		return (
+			<div className="bg-white rounded-lg border border-gray-200 p-6">
 				<div className="text-center py-8">
 					<div className="text-6xl mb-4">✅</div>
-					<h3 className="text-xl font-semibold text-gray-900 mb-2">
-						No Pending Orders
-					</h3>
-					<p className="text-gray-600 mb-4">
-						All orders already have purchase orders created, or there are no
-						orders waiting for PO generation.
+					<h2 className="text-2xl font-bold text-green-800 mb-2">
+						Purchase Order Created!
+					</h2>
+					<p className="text-gray-600">
+						Your purchase order has been created successfully. Redirecting...
 					</p>
-					<button
-						onClick={() =>
-							window.history.pushState({}, "", "/orders/create-custom-po")
-						}
-						className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-					>
-						Create Custom Purchase Order
-					</button>
 				</div>
-			) : (
-				<div>
-					{/* Vendor Selection */}
-					<div className="mb-6">
-						<div className="flex justify-between items-center mb-4">
-							<h3 className="text-lg font-semibold text-gray-900">
-								Vendors with Pending Items ({Object.keys(vendorGroups).length})
-							</h3>
-							<div className="flex gap-2">
+			</div>
+		);
+	}
+
+	// Determine which data to display based on mode
+	const currentTab = vendorTabs.length > 0 ? vendorTabs[activeVendorTab] : null;
+	const displayLineItems = vendorTabs.length > 0 && currentTab
+		? currentTab.lineItems
+		: lineItems;
+	const displayPoHeader = vendorTabs.length > 0 && currentTab
+		? currentTab.poHeader
+		: poHeader;
+
+	// CRITICAL DEBUG: Log what we're about to render
+	if (vendorTabs.length > 0 && currentTab) {
+		console.log(`\n📦 RENDER - Active Tab: ${activeVendorTab} (${currentTab.vendorName})`);
+		console.log(`📦 RENDER - displayLineItems (${displayLineItems.length} items):`);
+		displayLineItems.forEach((item, idx) => {
+			if (item.itemName) {
+				console.log(`  [${idx}] "${item.itemName}" - ${item.qty} ${item.uom} @ $${item.cost}`);
+			}
+		});
+	}
+
+	// Get the selected item for the details panel
+	const selectedItem = selectedLineIndex !== null ? displayLineItems[selectedLineIndex] : null;
+
+	// Debug logging for selected item
+	if (selectedItem && vendorTabs.length > 0) {
+		console.log(`📦 Selected Item Details:`, {
+			selectedLineIndex,
+			activeTab: activeVendorTab,
+			tabName: vendorTabs[activeVendorTab]?.vendorName,
+			itemName: selectedItem.itemName,
+			displayLineItemsLength: displayLineItems.length
+		});
+	}
+
+	return (
+		<>
+			<div className="flex gap-6 h-full">
+				{/* Left Side - Header + Line Items */}
+				<div className="flex-1 flex flex-col min-w-0">
+					{/* PO Header Card */}
+					<div className="bg-white border border-gray-200 rounded-lg p-6 mb-4">
+						{/* Vendor Tabs - Always show when tabs exist */}
+						{vendorTabs.length > 0 && (
+							<div className="border-b border-gray-200 -mx-6 px-6 mb-6">
+								<div className="flex gap-6 overflow-x-auto">
+									{vendorTabs.map((tab, index) => (
+										<button
+											key={tab.vendorId}
+											onClick={() => {
+												console.log(`📦 Switching to tab ${index}: ${tab.vendorName}`);
+												setActiveVendorTab(index);
+												setSelectedLineIndex(null); // CRITICAL: Reset selection when switching tabs
+											}}
+											className={`py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${
+												activeVendorTab === index
+													? "text-green-600"
+													: "text-gray-600 hover:text-gray-900"
+											}`}
+										>
+											{tab.vendorName}
+											{activeVendorTab === index && (
+												<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600"></div>
+											)}
+										</button>
+									))}
+								</div>
+							</div>
+						)}
+						{/* Row 1: PO Number, Vendor, Order Date, Required Date */}
+						<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+							{/* PO Number */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									<Hash size={14} className="inline mr-1" />
+									Purchase Order Number
+								</label>
+								<input
+									type="text"
+									value={displayPoHeader.poNumber}
+									placeholder="Auto-generated"
+									disabled
+									className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm"
+								/>
+							</div>
+
+							{/* Vendor */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									<Truck size={14} className="inline mr-1" />
+									Vendor
+								</label>
+								{vendors.length > 0 ? (
+									<select
+										value={displayPoHeader.vendorId}
+										onChange={(e) => handleHeaderChange("vendorId", e.target.value)}
+										disabled={vendorTabs.length > 0}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+									>
+										<option value="">Select vendor...</option>
+										{vendors.map((vendor) => (
+											<option key={vendor.id} value={vendor.id}>
+												{vendor.name}
+											</option>
+										))}
+									</select>
+								) : (
+									<input
+										type="text"
+										value={displayPoHeader.vendorId}
+										onChange={(e) => handleHeaderChange("vendorId", e.target.value)}
+										placeholder="Enter vendor name..."
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+									/>
+								)}
+							</div>
+
+							{/* Order Date */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									<Calendar size={14} className="inline mr-1" />
+									Order Date
+								</label>
+								<input
+									type="date"
+									value={displayPoHeader.orderDate}
+									onChange={(e) => handleHeaderChange("orderDate", e.target.value)}
+									className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+								/>
+							</div>
+
+							{/* Required Date */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									<Calendar size={14} className="inline mr-1" />
+									Required Date
+								</label>
+								<input
+									type="date"
+									value={displayPoHeader.requiredDate}
+									onChange={(e) => handleHeaderChange("requiredDate", e.target.value)}
+									className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+								/>
+							</div>
+						</div>
+
+						{/* Row 2: Ship To, Bill To */}
+						<div className="grid grid-cols-2 gap-4 mb-4">
+							{/* Ship To */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									<MapPin size={14} className="inline mr-1" />
+									Ship To
+								</label>
 								<button
-									onClick={() =>
-										setSelectedVendors(new Set(Object.keys(vendorGroups)))
-									}
-									className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+									type="button"
+									onClick={() => openAddressModal("shipTo")}
+									className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left text-sm hover:border-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
 								>
-									Select All
+									{poHeader.shipTo ? (
+										<span className="text-gray-900">{formatAddressStreet(poHeader.shipTo)}</span>
+									) : (
+										<span className="text-gray-400">Click to enter address...</span>
+									)}
 								</button>
+							</div>
+
+							{/* Bill To */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									<FileText size={14} className="inline mr-1" />
+									Bill To
+								</label>
 								<button
-									onClick={() => setSelectedVendors(new Set())}
-									className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+									type="button"
+									onClick={() => openAddressModal("billTo")}
+									className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left text-sm hover:border-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
 								>
-									Clear All
+									{poHeader.billTo ? (
+										<span className="text-gray-900">{formatAddressStreet(poHeader.billTo)}</span>
+									) : (
+										<span className="text-gray-400">Click to enter address...</span>
+									)}
 								</button>
 							</div>
 						</div>
 
+						{/* Row 3: Actions */}
+						<div className="pt-4 border-t border-gray-100">
+							<div className="text-sm text-gray-500 mb-4">
+								{totals.lineCount} items · Subtotal: ${totals.subtotal} · Tax: ${totals.tax} ·{" "}
+								<span className="font-semibold text-gray-700">Total: ${totals.total}</span>
+							</div>
+							{/* 2x2 Button Grid */}
+							<div className="grid grid-cols-2 gap-3">
+								<button
+									onClick={handlePopulateLines}
+									disabled={populating}
+									className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+								>
+									<RefreshCw size={16} className={populating ? "animate-spin" : ""} />
+									{populating ? "Populating..." : "Populate Lines"}
+								</button>
+								{/* Conditional submit buttons based on tab mode */}
+								{vendorTabs.length > 0 ? (
+									<>
+										<button
+											onClick={handleSaveAllAsDraft}
+											disabled={submitting || vendorTabs.length === 0}
+											className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+										>
+											<Save size={16} />
+											{submitting ? "Saving..." : "Save All as Draft"}
+										</button>
+										<button
+											onClick={handleSubmitSinglePO}
+											disabled={submitting || vendorTabs.length === 0}
+											className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+										>
+											<Send size={16} />
+											{submitting ? "Submitting..." : "Submit This PO"}
+										</button>
+										<button
+											onClick={handleSubmitAllPOs}
+											disabled={submitting || vendorTabs.length === 0}
+											className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+										>
+											<Send size={16} />
+											{submitting ? "Submitting..." : "Submit All POs"}
+										</button>
+									</>
+								) : (
+									<button
+										onClick={handleSubmitPO}
+										disabled={submitting || totals.lineCount === 0}
+										className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+									>
+										<Send size={16} />
+										{submitting ? "Submitting..." : "Submit Order"}
+									</button>
+								)}
+							</div>
+						</div>
+					</div>
+
+					{/* Error Display */}
+					{error && (
+						<div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+							<p className="text-red-700 text-sm">{error}</p>
+						</div>
+					)}
+
+					{/* Line Items List */}
+					<div className="bg-white border border-gray-200 rounded-lg p-4 flex-1 overflow-y-auto">
 						<div className="space-y-3">
-							{Object.values(vendorGroups).map((group) => (
-								<VendorGroup
-									key={group.vendor}
-									group={group}
-									isSelected={selectedVendors.has(group.vendor)}
-									onToggle={() => toggleVendorSelection(group.vendor)}
-								/>
+							{displayLineItems.map((item, index) => (
+								<div key={item.id}>
+									<OrderLineItem
+										lineNumber={item.lineNumber}
+										item={item}
+										isSelected={selectedLineIndex === index}
+										onSelect={() => {
+											console.log(`📦 Line clicked - Index: ${index}, Item:`, {
+												itemName: item.itemName,
+												activeTab: activeVendorTab,
+												tabName: vendorTabs.length > 0 ? vendorTabs[activeVendorTab].vendorName : 'N/A'
+											});
+											setSelectedLineIndex(index);
+										}}
+										onChange={(updatedItem) => handleLineItemChange(index, updatedItem)}
+										onComplete={() => handleLineComplete(index)}
+										onCreateNewItem={handleCreateNewItem}
+										availableItems={availableItems}
+									/>
+									{/* Source Order Badge */}
+									{item.sourceOrderNumber && (
+										<div className="ml-10 mt-1">
+											<span className="inline-flex items-center px-2 py-1 bg-purple-50 border border-purple-200 text-purple-700 text-xs rounded-full">
+												From: {item.sourceOrderNumber}
+											</span>
+										</div>
+									)}
+								</div>
 							))}
 						</div>
-					</div>
 
-					{/* Summary and Actions */}
-					<div className="bg-gray-50 rounded-lg p-4 mb-6">
-						<div className="flex justify-between items-center mb-2">
-							<span className="text-lg font-semibold text-gray-900">
-								Summary:
-							</span>
-							<span className="text-lg font-bold text-purple-600">
-								{selectedVendors.size} POs to create
-							</span>
-						</div>
-						<p className="text-sm text-gray-600">
-							Total estimated value: $
-							{Object.values(vendorGroups)
-								.filter((group) => selectedVendors.has(group.vendor))
-								.reduce((total, group) => total + group.totalValue, 0)
-								.toFixed(2)}
-						</p>
-					</div>
-
-					{/* Action Buttons */}
-					<div className="flex gap-3">
+						{/* Add Line Button */}
 						<button
-							onClick={createPurchaseOrders}
-							disabled={creating || selectedVendors.size === 0}
-							className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+							onClick={() => {
+								const newLineNumber = lineItems.length + 1;
+								setLineItems((prev) => [...prev, createEmptyLineItem(newLineNumber)]);
+								setSelectedLineIndex(lineItems.length);
+							}}
+							className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-green-500 hover:text-green-600 transition-colors"
 						>
-							{creating
-								? "Creating Purchase Orders..."
-								: `Create ${selectedVendors.size} Purchase Order${
-										selectedVendors.size !== 1 ? "s" : ""
-								  }`}
-						</button>
-						<button
-							onClick={fetchPendingOrders}
-							className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-						>
-							Refresh
+							<Plus size={18} />
+							Add Line Item
 						</button>
 					</div>
 				</div>
-			)}
-		</div>
-	);
-}
 
-function VendorGroup({ group, isSelected, onToggle }) {
-	const formatCurrency = (amount) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-		}).format(amount || 0);
-	};
-
-	return (
-		<div
-			className={`border rounded-lg p-4 cursor-pointer transition-all ${
-				isSelected
-					? "border-green-300 bg-green-50"
-					: "border-gray-200 bg-white hover:border-gray-300"
-			}`}
-			onClick={onToggle}
-		>
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-3">
-					<input
-						type="checkbox"
-						checked={isSelected}
-						onChange={onToggle}
-						className="h-4 w-4 text-green-600 rounded"
+				{/* Right Side - Item Details Panel */}
+				<div className="w-80 flex-shrink-0">
+					<ItemDetailsPanel
+						item={selectedItem}
+						type="purchaseOrder"
+						onUpdate={handleUpdateFromPanel}
 					/>
-					<div>
-						<h4 className="font-semibold text-gray-900">{group.vendor}</h4>
-						<p className="text-sm text-gray-600">
-							{group.items.length} items from {group.orders.length} order(s)
-						</p>
-					</div>
-				</div>
-				<div className="text-right">
-					<p className="font-semibold text-gray-900">
-						{formatCurrency(group.totalValue)}
-					</p>
-					<p className="text-sm text-gray-600">Estimated Total</p>
 				</div>
 			</div>
 
-			{/* Order References */}
-			<div className="mt-2 text-sm text-gray-600">
-				<span className="font-medium">Source Orders:</span> {group.orders.join(", ")}
-			</div>
+			{/* Address Input Modal */}
+			<AddressInputModal
+				isOpen={addressModal.isOpen}
+				onClose={() => setAddressModal({ isOpen: false, type: null })}
+				onSave={handleAddressSave}
+				initialAddress={addressModal.type ? poHeader[addressModal.type] : {}}
+				title={addressModal.type === "shipTo" ? "Ship To Address" : "Bill To Address"}
+				otherAddress={addressModal.type === "billTo" ? poHeader.shipTo : poHeader.billTo}
+				otherAddressLabel={addressModal.type === "billTo" ? "Ship To" : "Bill To"}
+			/>
 
-			{/* Preview of items */}
-			<div className="mt-2 text-sm text-gray-500">
-				<span className="font-medium">Items preview:</span>{" "}
-				{group.items
-					.slice(0, 3)
-					.map((item) => item.ingredient_name)
-					.join(", ")}
-				{group.items.length > 3 && ` and ${group.items.length - 3} more...`}
-			</div>
-		</div>
+			{/* Create Item Modal */}
+			<CreateItemModal
+				isOpen={showCreateItemModal}
+				onClose={() => setShowCreateItemModal(false)}
+				onSave={handleNewItemCreated}
+				initialName={createItemInitialName}
+			/>
+		</>
 	);
 }

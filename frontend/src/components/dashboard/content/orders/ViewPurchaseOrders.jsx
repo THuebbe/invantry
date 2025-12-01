@@ -12,7 +12,9 @@ export default function ViewPurchaseOrders() {
 	const [supplierFilter, setSupplierFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("created_at");
 	const [sortOrder, setSortOrder] = useState("desc");
+	const [searchTerm, setSearchTerm] = useState("");
 
+	// eslint-disable-next-line no-unused-vars
 	const { user } = useAuth();
 
 	useEffect(() => {
@@ -41,7 +43,11 @@ export default function ViewPurchaseOrders() {
 			const statusMatch = filter === "all" || po.status === filter;
 			const supplierMatch =
 				supplierFilter === "all" || po.supplier_name === supplierFilter;
-			return statusMatch && supplierMatch;
+			const searchMatch =
+				!searchTerm ||
+				po.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				po.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase());
+			return statusMatch && supplierMatch && searchMatch;
 		})
 		.sort((a, b) => {
 			let aVal = a[sortBy];
@@ -100,11 +106,25 @@ export default function ViewPurchaseOrders() {
 					View Purchase Orders
 				</h2>
 				<button
-					onClick={() => window.history.pushState({}, "", "/orders")}
+					onClick={() => {
+						window.history.pushState({}, "", "/orders");
+						window.dispatchEvent(new PopStateEvent("popstate"));
+					}}
 					className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
 				>
 					← Back to Orders
 				</button>
+			</div>
+
+			{/* Search Bar */}
+			<div className="mb-4">
+				<input
+					type="text"
+					placeholder="Search by PO number or vendor name..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+				/>
 			</div>
 
 			{/* Filters and Sorting */}
@@ -199,7 +219,10 @@ export default function ViewPurchaseOrders() {
 			) : (
 				<div className="space-y-4">
 					{filteredPOs.map((po) => (
-						<PurchaseOrderCard key={po.id} purchaseOrder={po} />
+						<PurchaseOrderCard
+							key={po.id}
+							purchaseOrder={po}
+						/>
 					))}
 				</div>
 			)}
@@ -208,11 +231,29 @@ export default function ViewPurchaseOrders() {
 }
 
 function PurchaseOrderCard({ purchaseOrder: po }) {
+	const [showDetails, setShowDetails] = useState(false);
+
 	const statusColors = {
 		draft: "bg-gray-100 text-gray-800",
 		ordered: "bg-blue-100 text-blue-800",
 		received: "bg-yellow-100 text-yellow-800",
 		stocked: "bg-green-100 text-green-800",
+	};
+
+	const handleReceive = (poId) => {
+		// Navigate to receiving screen
+		window.history.pushState({}, "", `/dashboard/orders/receive-po?poId=${poId}`);
+		window.dispatchEvent(new PopStateEvent("popstate"));
+	};
+
+	const handleViewDetails = () => {
+		setShowDetails(!showDetails);
+	};
+
+	const handleEdit = (poId) => {
+		// Navigate to edit screen (if implemented)
+		window.history.pushState({}, "", `/dashboard/orders/edit-po/${poId}`);
+		window.dispatchEvent(new PopStateEvent("popstate"));
 	};
 
 	const formatCurrency = (amount) => {
@@ -228,16 +269,6 @@ function PurchaseOrderCard({ purchaseOrder: po }) {
 			year: "numeric",
 			month: "short",
 			day: "numeric",
-		});
-	};
-
-	const formatDateTime = (dateString) => {
-		return new Date(dateString).toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
 		});
 	};
 
@@ -295,17 +326,26 @@ function PurchaseOrderCard({ purchaseOrder: po }) {
 				</div>
 
 				<div className="flex gap-2">
-					<button className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700">
-						View Details
+					<button
+						onClick={handleViewDetails}
+						className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+					>
+						{showDetails ? "Hide Details" : "View Details"}
 					</button>
 					{po.status === "draft" && (
-						<button className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+						<button
+							onClick={() => handleEdit(po.id)}
+							className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+						>
 							Edit
 						</button>
 					)}
-					{po.status === "ordered" && (
-						<button className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
-							Mark Received
+					{(po.status === "ordered" || po.status === "received") && (
+						<button
+							onClick={() => handleReceive(po.id)}
+							className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+						>
+							Receive Items
 						</button>
 					)}
 				</div>
@@ -333,6 +373,34 @@ function PurchaseOrderCard({ purchaseOrder: po }) {
 					<span className="capitalize">{po.status || "draft"}</span>
 				</div>
 			</div>
+
+			{/* Details Expansion */}
+			{showDetails && po.items && (
+				<div className="mt-4 pt-4 border-t border-gray-200">
+					<h4 className="text-sm font-semibold text-gray-900 mb-3">
+						Items ({po.items.length})
+					</h4>
+					<div className="space-y-2">
+						{po.items.map((item, idx) => (
+							<div
+								key={idx}
+								className="flex justify-between items-center text-sm py-2 px-3 bg-gray-50 rounded"
+							>
+								<span className="font-medium text-gray-900">
+									{item.ingredient_name}
+								</span>
+								<div className="flex items-center gap-4 text-gray-600">
+									<span>Qty: {item.quantity} {item.unit}</span>
+									<span>@ ${item.unit_price?.toFixed(2) || "0.00"}</span>
+									<span className="font-semibold text-gray-900">
+										${((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}
+									</span>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

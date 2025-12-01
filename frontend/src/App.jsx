@@ -80,6 +80,14 @@ function App() {
 								}
 							/>
 							<Route
+								path="/dashboard/orders/*"
+								element={
+									<ProtectedRoute>
+										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+							<Route
 								path="/reports/*"
 								element={
 									<ProtectedRoute>

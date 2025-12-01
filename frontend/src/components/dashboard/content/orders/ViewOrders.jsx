@@ -12,10 +12,12 @@ export default function ViewOrders() {
 	const [filter, setFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("created_at");
 	const [sortOrder, setSortOrder] = useState("desc");
+	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedOrder, setSelectedOrder] = useState(null);
 	const [modalMode, setModalMode] = useState("view");
 	const [isModalOpen, setIsModalOpen] = useState(false);
 
+	// eslint-disable-next-line no-unused-vars
 	const { user } = useAuth();
 
 	useEffect(() => {
@@ -66,8 +68,12 @@ export default function ViewOrders() {
 
 	const filteredOrders = orders
 		.filter((order) => {
-			if (filter === "all") return true;
-			return order.status === filter;
+			const statusMatch = filter === "all" || order.status === filter;
+			const searchMatch =
+				!searchTerm ||
+				order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+			return statusMatch && searchMatch;
 		})
 		.sort((a, b) => {
 			let aVal = a[sortBy];
@@ -120,11 +126,25 @@ export default function ViewOrders() {
 			<div className="flex justify-between items-center mb-6">
 				<h2 className="text-2xl font-bold text-gray-900">View Orders</h2>
 				<button
-					onClick={() => window.history.pushState({}, "", "/orders")}
+					onClick={() => {
+						window.history.pushState({}, "", "/orders");
+						window.dispatchEvent(new PopStateEvent("popstate"));
+					}}
 					className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
 				>
 					← Back to Orders
 				</button>
+			</div>
+
+			{/* Search Bar */}
+			<div className="mb-4">
+				<input
+					type="text"
+					placeholder="Search by order number or notes..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+				/>
 			</div>
 
 			{/* Filters and Sorting */}
@@ -265,9 +285,6 @@ function OrderCard({ order, onViewDetails, onEditOrder }) {
 						>
 							{order.status.replace("_", " ").toUpperCase()}
 						</span>
-						<span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
-							{order.order_type.toUpperCase()}
-						</span>
 					</div>
 
 					<div className="grid grid-cols-3 gap-4 text-sm text-gray-600">
@@ -290,14 +307,14 @@ function OrderCard({ order, onViewDetails, onEditOrder }) {
 				</div>
 
 				<div className="flex gap-2">
-					<button 
+					<button
 						onClick={() => onViewDetails(order)}
-						className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+						className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
 					>
-						View Details
+						Full Details
 					</button>
 					{order.status === "draft" && (
-						<button 
+						<button
 							onClick={() => onEditOrder(order)}
 							className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
 						>
