@@ -336,6 +336,109 @@ export async function getReceivingMetrics(restaurantId) {
 }
 
 /**
+ * Get vendor-specific metrics for ERP module
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<Object>} Vendor metrics
+ */
+export async function getVendorMetrics(restaurantId) {
+	if (!restaurantId) {
+		throw new Error("Restaurant ID is required");
+	}
+
+	try {
+		// 1. Count active vendors (is_active = true)
+		const { count: activeVendorsCount, error: vendorError } = await supabase
+			.from("vendors")
+			.select("*", { count: "exact", head: true })
+			.eq("restaurant_id", restaurantId)
+			.eq("is_active", true);
+
+		if (vendorError) {
+			console.error("Error counting active vendors:", vendorError);
+			throw vendorError;
+		}
+
+		// 2. Calculate average lead time from vendor_purchasing_data for active vendors
+		// Join vendors with vendor_purchasing_data to get lead times
+		const { data: purchasingData, error: leadTimeError } = await supabase
+			.from("vendor_purchasing_data")
+			.select(
+				`
+				lead_time_days,
+				vendors!inner(is_active)
+			`
+			)
+			.eq("restaurant_id", restaurantId)
+			.not("lead_time_days", "is", null);
+
+		if (leadTimeError) {
+			console.error("Error fetching lead time data:", leadTimeError);
+			throw leadTimeError;
+		}
+
+		// Filter for active vendors and calculate average
+		let avgLeadTimeDays = 0;
+		if (purchasingData && purchasingData.length > 0) {
+			const activeVendorData = purchasingData.filter(
+				(pd) => pd.vendors?.is_active === true
+			);
+			if (activeVendorData.length > 0) {
+				const totalLeadTime = activeVendorData.reduce(
+					(sum, pd) => sum + (parseFloat(pd.lead_time_days) || 0),
+					0
+				);
+				avgLeadTimeDays = totalLeadTime / activeVendorData.length;
+			}
+		}
+
+		// 3. Count documents expiring within 30 days
+		const today = new Date();
+		const thirtyDaysFromNow = new Date();
+		thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+		const todayStr = today.toISOString().split("T")[0];
+		const thirtyDaysStr = thirtyDaysFromNow.toISOString().split("T")[0];
+
+		const { count: documentsExpiringSoon, error: docsError } = await supabase
+			.from("vendor_documents")
+			.select("*", { count: "exact", head: true })
+			.eq("restaurant_id", restaurantId)
+			.gte("expiration_date", todayStr)
+			.lte("expiration_date", thirtyDaysStr);
+
+		if (docsError) throw docsError;
+
+		// 4. Count Grade A vendors based on scorecard overall grade
+		// We need to get vendors with an 'overall_satisfaction_score' metric of >= 90 (which is Grade A)
+		// Or check if there's an overall_grade field - let's query for high-performing vendors
+		const { data: scorecards, error: scoreError } = await supabase
+			.from("vendor_scorecards")
+			.select("vendor_id, score")
+			.eq("restaurant_id", restaurantId)
+			.eq("metric_name", "overall_satisfaction_score")
+			.gte("score", 90); // Grade A threshold: 90-100
+
+		if (scoreError) throw scoreError;
+
+		// Get unique vendor_ids with Grade A performance
+		const gradeAVendorIds = new Set(
+			scorecards?.map((sc) => sc.vendor_id) || []
+		);
+		const gradeAVendorsCount = gradeAVendorIds.size;
+
+		return {
+			activeVendorsCount: activeVendorsCount || 0,
+			avgLeadTimeDays: Math.round(avgLeadTimeDays * 10) / 10, // Round to 1 decimal place
+			documentsExpiringSoon: documentsExpiringSoon || 0,
+			gradeAVendorsCount: gradeAVendorsCount,
+		};
+	} catch (error) {
+		console.error("Error getting vendor metrics:", error);
+		throw new Error(`Failed to get vendor metrics: ${error.message}`);
+	}
+}
+
+/**
  * Get menu items-specific metrics
  * @param {string} restaurantId - Restaurant UUID
  * @returns {Promise<Object>} Menu items metrics

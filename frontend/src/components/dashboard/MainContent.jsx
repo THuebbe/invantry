@@ -8,6 +8,7 @@ import OrdersContent from "./content/OrdersContent";
 import ReportsContent from "./content/ReportsContent";
 import MenuItemsContent from "./content/MenuItemsContent";
 import RecipeBuilder from "../menu-items/RecipeBuilder";
+import VendorsContent from "../vendor-erp/VendorsContent";
 
 export default function MainContent() {
 	const location = useLocation();
@@ -46,6 +47,8 @@ export default function MainContent() {
 			return <ReceivingContent subsection={subsection} />;
 		case "orders":
 			return <OrdersContent subsection={subsection} params={params} />;
+		case "vendors":
+			return <VendorsContent subsection={subsection} params={params} />;
 		case "reports":
 			return <ReportsContent subsection={subsection} />;
 		case "dashboard":

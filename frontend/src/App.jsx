@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RecipeBuilder from "./components/menu-items/RecipeBuilder";
 import Landing from "./pages/Landing";
+import VendorERPTest from "./pages/VendorERPTest";
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -88,10 +89,26 @@ function App() {
 								}
 							/>
 							<Route
+								path="/vendors/*"
+								element={
+									<ProtectedRoute>
+										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+							<Route
 								path="/reports/*"
 								element={
 									<ProtectedRoute>
 										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+							<Route
+								path="/vendor-test"
+								element={
+									<ProtectedRoute>
+										<VendorERPTest />
 									</ProtectedRoute>
 								}
 							/>

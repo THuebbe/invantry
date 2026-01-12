@@ -90,7 +90,7 @@ export async function getVendorById(vendorId, restaurantId) {
  * Create a new vendor
  * @param {Object} vendorData - Vendor data
  * @param {string} restaurantId - Restaurant UUID
- * @param {string} userId - User ID for created_by
+ * @param {string} userId - User ID (not currently stored in database, reserved for future use)
  * @returns {Promise<Object>} Created vendor object
  */
 export async function createVendor(vendorData, restaurantId, userId) {
@@ -150,7 +150,6 @@ export async function createVendor(vendorData, restaurantId, userId) {
 				account_number: account_number?.trim() || null,
 				notes: notes?.trim() || null,
 				is_active: true,
-				created_by: userId,
 			})
 			.select()
 			.single();
@@ -726,5 +725,242 @@ export async function deleteIngredientVendorMapping(
 	} catch (error) {
 		console.error("Error deleting ingredient-vendor mapping:", error);
 		throw error;
+	}
+}
+
+/**
+ * Get comprehensive vendor summary with ALL related data
+ * @param {string} vendorId - Vendor UUID
+ * @param {string} restaurantId - Restaurant UUID for validation
+ * @returns {Promise<Object>} Vendor with addresses, contacts, payment info, items, documents, scorecards
+ */
+export async function getVendorSummary(vendorId, restaurantId) {
+	try {
+		// Get vendor details
+		const { data: vendor, error: vendorError } = await supabase
+			.from("vendors")
+			.select("*")
+			.eq("id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.single();
+
+		if (vendorError) {
+			if (vendorError.code === "PGRST116") {
+				throw new Error("Vendor not found");
+			}
+			throw vendorError;
+		}
+
+		// Get addresses
+		const { data: addresses, error: addressError } = await supabase
+			.from("vendor_addresses")
+			.select("*")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.order("is_primary", { ascending: false });
+
+		if (addressError) {
+			console.warn("Error fetching addresses:", addressError);
+		}
+
+		// Get contacts
+		const { data: contacts, error: contactError } = await supabase
+			.from("vendor_contacts")
+			.select("*")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.order("is_primary", { ascending: false });
+
+		if (contactError) {
+			console.warn("Error fetching contacts:", contactError);
+		}
+
+		// Get payment info (with masked banking data)
+		const { data: paymentInfo, error: paymentError } = await supabase
+			.from("vendor_payment_info")
+			.select(
+				`
+				*,
+				payment_terms:payment_terms(*)
+			`
+			)
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.maybeSingle();
+
+		if (paymentError) {
+			console.warn("Error fetching payment info:", paymentError);
+		}
+
+		// Mask banking data if present
+		let maskedPaymentInfo = null;
+		if (paymentInfo) {
+			maskedPaymentInfo = {
+				...paymentInfo,
+				account_number: paymentInfo.account_number
+					? "*".repeat(paymentInfo.account_number.length - 4) +
+					  paymentInfo.account_number.slice(-4)
+					: null,
+				routing_number: paymentInfo.routing_number
+					? "*".repeat(paymentInfo.routing_number.length - 4) +
+					  paymentInfo.routing_number.slice(-4)
+					: null,
+			};
+		}
+
+		// Get purchasing data
+		const { data: purchasingData, error: purchasingError } = await supabase
+			.from("vendor_purchasing_data")
+			.select("*")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.maybeSingle();
+
+		if (purchasingError) {
+			console.warn("Error fetching purchasing data:", purchasingError);
+		}
+
+		// Get ingredient mappings (vendor items)
+		const { data: items, error: itemsError } = await supabase
+			.from("ingredient_vendor_mapping")
+			.select(
+				`
+				*,
+				ingredient:ingredient_library(*)
+			`
+			)
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId);
+
+		if (itemsError) {
+			console.warn("Error fetching items:", itemsError);
+		}
+
+		// Get documents
+		const { data: documents, error: documentsError } = await supabase
+			.from("vendor_documents")
+			.select("*")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.order("created_at", { ascending: false });
+
+		if (documentsError) {
+			console.warn("Error fetching documents:", documentsError);
+		}
+
+		// Get scorecards
+		const { data: scorecards, error: scorecardsError } = await supabase
+			.from("vendor_scorecards")
+			.select("*")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.order("calculation_date", { ascending: false });
+
+		if (scorecardsError) {
+			console.warn("Error fetching scorecards:", scorecardsError);
+		}
+
+		// Get purchasing stats (from purchase_orders if exists)
+		// For now, return basic stats
+		const stats = {
+			total_items: items?.length || 0,
+			active_items: items?.filter((i) => i.is_active !== false).length || 0,
+			preferred_items: items?.filter((i) => i.is_preferred).length || 0,
+			total_documents: documents?.length || 0,
+			expired_documents:
+				documents?.filter((d) => d.is_expired === true).length || 0,
+			addresses_count: addresses?.length || 0,
+			contacts_count: contacts?.length || 0,
+		};
+
+		return {
+			...vendor,
+			addresses: addresses || [],
+			contacts: contacts || [],
+			payment_info: maskedPaymentInfo,
+			purchasing_data: purchasingData,
+			items: items || [],
+			documents: documents || [],
+			scorecards: scorecards || [],
+			stats,
+		};
+	} catch (error) {
+		console.error("Error fetching vendor summary:", error);
+		throw error;
+	}
+}
+
+/**
+ * Get vendor dashboard metrics for a restaurant
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<Object>} Object with 4 vendor metrics
+ */
+export async function getVendorMetrics(restaurantId) {
+	try {
+		// 1. Active Vendors Count
+		const { count: activeVendorsCount, error: activeError } = await supabase
+			.from("vendors")
+			.select("*", { count: "exact", head: true })
+			.eq("restaurant_id", restaurantId)
+			.eq("is_active", true);
+
+		if (activeError) {
+			console.warn("Error counting active vendors:", activeError);
+		}
+
+		// 2. Average Lead Time Days
+		const { data: purchasingData, error: purchasingError } = await supabase
+			.from("vendor_purchasing_data")
+			.select("lead_time_days")
+			.eq("restaurant_id", restaurantId);
+
+		if (purchasingError) {
+			console.warn("Error fetching purchasing data:", purchasingError);
+		}
+
+		let avgLeadTimeDays = 0;
+		if (purchasingData && purchasingData.length > 0) {
+			const validLeadTimes = purchasingData
+				.filter((d) => d.lead_time_days !== null)
+				.map((d) => d.lead_time_days);
+
+			if (validLeadTimes.length > 0) {
+				avgLeadTimeDays = Math.round(
+					validLeadTimes.reduce((a, b) => a + b, 0) / validLeadTimes.length
+				);
+			}
+		}
+
+		// 3. Top Vendor by Spend (from purchase_orders - placeholder for now)
+		// TODO: Calculate from actual PO data when available
+		const topVendorBySpend = "Not available yet";
+
+		// 4. Expiring Documents Count (within 30 days)
+		const today = new Date();
+		const futureDate = new Date();
+		futureDate.setDate(today.getDate() + 30);
+
+		const { count: expiringDocumentsCount, error: expiringError } =
+			await supabase
+				.from("vendor_documents")
+				.select("*", { count: "exact", head: true })
+				.eq("restaurant_id", restaurantId)
+				.not("expiration_date", "is", null)
+				.gte("expiration_date", today.toISOString())
+				.lte("expiration_date", futureDate.toISOString());
+
+		if (expiringError) {
+			console.warn("Error counting expiring documents:", expiringError);
+		}
+
+		return {
+			activeVendorsCount: activeVendorsCount || 0,
+			avgLeadTimeDays: avgLeadTimeDays,
+			topVendorBySpend: topVendorBySpend,
+			expiringDocumentsCount: expiringDocumentsCount || 0,
+		};
+	} catch (error) {
+		console.error("Error fetching vendor metrics:", error);
+		throw new Error(`Failed to fetch vendor metrics: ${error.message}`);
 	}
 }

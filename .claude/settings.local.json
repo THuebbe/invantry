@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(cd:*)",
+      "Bash(grep:*)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(node scripts/validate-vendor-erp-db.js:*)",
+      "Bash(node scripts/validate-vendor-erp-db-simple.js:*)",
+      "Bash(node -e \"\nimport\\(''dotenv''\\).then\\(dotenv => {\n  dotenv.default.config\\({ path: ''./backend/.env'' }\\);\n  return import\\(''@supabase/supabase-js''\\);\n}\\).then\\(\\({ createClient }\\) => {\n  const supabase = createClient\\(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY\\);\n  return supabase.from\\(''vendors''\\).select\\(''*''\\).limit\\(1\\);\n}\\).then\\(\\({ data, error }\\) => {\n  if \\(error\\) {\n    console.error\\(''Error:'', error\\);\n  } else if \\(data && data.length > 0\\) {\n    console.log\\(''Vendors table columns:''\\);\n    Object.keys\\(data[0]\\).forEach\\(col => console.log\\(''  -'', col\\)\\);\n  } else {\n    console.log\\(''No data in vendors table''\\);\n  }\n}\\).catch\\(err => console.error\\(''Script error:'', err\\)\\);\n\")",
+      "Bash(node scripts/check-vendors-columns.js:*)",
+      "Bash(node scripts/check-vendor-contacts.js:*)",
+      "Bash(node -e:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(test:*)",
+      "Bash(tee:*)",
+      "Bash(timeout 180 node scripts/seed-vendor-complete.js --clean)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
