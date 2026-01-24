@@ -1,7 +1,7 @@
 // DocumentForm.jsx - Modal form for uploading vendor documents
 // Handles file upload with drag-and-drop, validation, and progress tracking
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Loader2, Upload, File, AlertCircle } from 'lucide-react';
 import { useCreateVendorDocument } from '../../../hooks/useVendorDocuments';
 import { validateRequired } from '../../../utils/vendorValidators';
@@ -24,10 +24,24 @@ export default function DocumentForm({ vendorId, onClose, onSuccess }) {
     notes: ''
   });
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent rapid clicks
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  const { mutate: uploadDocument, isPending: isUploading } = useCreateVendorDocument();
+  const { mutate: uploadDocument, isPending: isUploadingMutation } = useCreateVendorDocument();
+  const isUploading = isUploadingMutation || isSubmitting;
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !isUploading) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [onClose, isUploading]);
 
   const validateFile = (file) => {
     if (!file) {
@@ -105,9 +119,14 @@ export default function DocumentForm({ vendorId, onClose, onSuccess }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Prevent rapid clicks
+    if (isUploading) return;
+
     if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true); // Immediately disable button
 
     const formDataToSend = new FormData();
     formDataToSend.append('document', selectedFile);
@@ -125,6 +144,7 @@ export default function DocumentForm({ vendorId, onClose, onSuccess }) {
         onClose();
       },
       onError: (error) => {
+        setIsSubmitting(false); // Re-enable on error
         setErrors({ submit: error.message || 'An error occurred while uploading the document.' });
       }
     });

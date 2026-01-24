@@ -26,6 +26,7 @@ export default function VendorList() {
   );
   const [showVendorForm, setShowVendorForm] = useState(false);
   const [editingVendor, setEditingVendor] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Fetch vendors from backend
   const { data: vendors = [], isLoading, error, refetch } = useVendors();
@@ -165,6 +166,15 @@ export default function VendorList() {
         </button>
       </div>
 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <p className="text-sm text-green-700 font-medium">
+            {successMessage}
+          </p>
+        </div>
+      )}
+
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -284,8 +294,11 @@ export default function VendorList() {
             setShowVendorForm(false);
             setEditingVendor(null);
           }}
-          onSuccess={() => {
+          onSuccess={(vendorName, isUpdate) => {
             refetch();
+            const action = isUpdate ? 'updated' : 'created';
+            setSuccessMessage(`Vendor "${vendorName}" ${action} successfully!`);
+            setTimeout(() => setSuccessMessage(""), 5000);
           }}
         />
       )}

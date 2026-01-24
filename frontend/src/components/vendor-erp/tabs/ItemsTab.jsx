@@ -1,10 +1,13 @@
 // ItemsTab.jsx - Vendor items (ingredient-vendor mapping) table
 // Shows all items supplied by this vendor with pricing and lead times
 
-import { Package, Plus, Star, Clock, Search, Edit2, X, Check } from "lucide-react";
+import { Package, Plus, Star, Clock, Search, Edit2, X, Check, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useUpdateVendorItem } from "../../../hooks/useVendorItems";
 
 export default function ItemsTab({ vendorId, vendor }) {
+  const { mutate: updateVendorItem, isPending: isSaving } = useUpdateVendorItem();
+
   // Transform vendor.items to match expected format
   const rawItems = useMemo(() => {
     if (!vendor || !vendor.items) return [];
@@ -31,6 +34,7 @@ export default function ItemsTab({ vendorId, vendor }) {
   // Inline editing state
   const [editingItemId, setEditingItemId] = useState(null);
   const [editedItem, setEditedItem] = useState(null);
+  const [originalItem, setOriginalItem] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   const items = rawItems;
@@ -44,6 +48,7 @@ export default function ItemsTab({ vendorId, vendor }) {
   const handleEdit = (item) => {
     setEditingItemId(item.id);
     setEditedItem({ ...item });
+    setOriginalItem({ ...item });
     setHasChanges(false);
   };
 
@@ -53,16 +58,55 @@ export default function ItemsTab({ vendorId, vendor }) {
   };
 
   const handleCancel = () => {
+    // Revert to original values
+    if (originalItem) {
+      setEditedItem({ ...originalItem });
+    }
     setEditingItemId(null);
     setEditedItem(null);
+    setOriginalItem(null);
     setHasChanges(false);
   };
 
   const handleSave = () => {
-    alert("Changes will be saved in Phase 2");
-    setEditingItemId(null);
-    setEditedItem(null);
-    setHasChanges(false);
+    // Prevent rapid clicks - check isSaving first
+    if (isSaving) return;
+    if (!hasChanges || !editedItem) return;
+
+    // Validate required fields
+    if (!editedItem.vendor_item_code || !editedItem.price_per_pack || editedItem.lead_time_days === null || editedItem.lead_time_days === undefined) {
+      alert('Please fill in all required fields: Vendor Code, Price, and Lead Time');
+      return;
+    }
+
+    // Prepare update data - map UI fields to API fields
+    const updates = {
+      vendor_item_number: editedItem.vendor_item_code,
+      unit_cost: parseFloat(editedItem.price_per_pack),
+      lead_time_days: parseInt(editedItem.lead_time_days),
+      minimum_order_qty: parseInt(editedItem.minimum_order_qty) || 1,
+      is_preferred: editedItem.is_preferred || false,
+      is_active: editedItem.is_active !== false
+    };
+
+    updateVendorItem(
+      {
+        vendorId: vendorId,
+        ingredientId: editedItem.ingredient_id,
+        updates: updates
+      },
+      {
+        onSuccess: () => {
+          setEditingItemId(null);
+          setEditedItem(null);
+          setOriginalItem(null);
+          setHasChanges(false);
+        },
+        onError: (error) => {
+          alert(`Failed to save changes: ${error.message}`);
+        }
+      }
+    );
   };
 
   // Filter items based on search and preferred status
@@ -338,28 +382,38 @@ export default function ItemsTab({ vendorId, vendor }) {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {isEditing ? (
-                          hasChanges ? (
-                            <button
-                              onClick={handleSave}
-                              className="text-green-600 hover:text-green-800 transition-colors"
-                              title="Save changes"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          ) : (
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={handleCancel}
                               className="text-gray-600 hover:text-gray-800 transition-colors"
                               title="Cancel editing"
+                              disabled={isSaving}
                             >
                               <X className="w-4 h-4" />
                             </button>
-                          )
+                            <button
+                              onClick={handleSave}
+                              className={`transition-colors flex items-center gap-1 ${
+                                hasChanges && !isSaving
+                                  ? 'text-green-600 hover:text-green-800'
+                                  : 'text-gray-400 cursor-not-allowed'
+                              }`}
+                              title={hasChanges ? "Save changes" : "No changes to save"}
+                              disabled={!hasChanges || isSaving}
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={() => handleEdit(item)}
                             className="text-gray-600 hover:text-green-600 transition-colors"
                             title="Edit item"
+                            disabled={isSaving}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>

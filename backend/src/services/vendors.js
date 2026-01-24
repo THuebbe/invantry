@@ -97,6 +97,9 @@ export async function createVendor(vendorData, restaurantId, userId) {
 	try {
 		const {
 			name,
+			vendor_code,
+			legal_name,
+			trade_name,
 			contact_name,
 			phone,
 			email,
@@ -104,6 +107,7 @@ export async function createVendor(vendorData, restaurantId, userId) {
 			payment_terms,
 			account_number,
 			notes,
+			status,
 		} = vendorData;
 
 		// Validation
@@ -113,6 +117,28 @@ export async function createVendor(vendorData, restaurantId, userId) {
 
 		if (name.length > 255) {
 			throw new Error("Vendor name must be 255 characters or less");
+		}
+
+		// Validate vendor_code if provided
+		if (vendor_code && vendor_code.trim().length > 0) {
+			// Vendor code format validation (alphanumeric and hyphens)
+			const codeRegex = /^[A-Z0-9-]+$/i;
+			if (!codeRegex.test(vendor_code.trim())) {
+				throw new Error("Vendor code can only contain letters, numbers, and hyphens");
+			}
+
+			// Check for duplicate vendor_code in this restaurant
+			const { data: existingCode, error: codeError } = await supabase
+				.from("vendors")
+				.select("id, name")
+				.eq("restaurant_id", restaurantId)
+				.eq("vendor_code", vendor_code.trim().toUpperCase())
+				.maybeSingle();
+
+			if (codeError) throw codeError;
+			if (existingCode) {
+				throw new Error(`A vendor with code "${vendor_code.toUpperCase()}" already exists (${existingCode.name})`);
+			}
 		}
 
 		// Validate email format if provided
@@ -136,12 +162,18 @@ export async function createVendor(vendorData, restaurantId, userId) {
 			throw new Error("A vendor with this name already exists");
 		}
 
+		// Determine is_active based on status field
+		const isActive = status === 'inactive' ? false : true;
+
 		// Insert vendor
 		const { data, error } = await supabase
 			.from("vendors")
 			.insert({
 				restaurant_id: restaurantId,
 				name: name.trim(),
+				vendor_code: vendor_code?.trim()?.toUpperCase() || null,
+				legal_name: legal_name?.trim() || null,
+				trade_name: trade_name?.trim() || null,
 				contact_name: contact_name?.trim() || null,
 				phone: phone?.trim() || null,
 				email: email?.trim() || null,
@@ -149,14 +181,14 @@ export async function createVendor(vendorData, restaurantId, userId) {
 				payment_terms: payment_terms?.trim() || null,
 				account_number: account_number?.trim() || null,
 				notes: notes?.trim() || null,
-				is_active: true,
+				is_active: isActive,
 			})
 			.select()
 			.single();
 
 		if (error) throw error;
 
-		console.log(`✅ Created vendor: ${data.name} (ID: ${data.id})`);
+		console.log(`✅ Created vendor: ${data.name} (ID: ${data.id}, Code: ${data.vendor_code || 'N/A'})`);
 		return data;
 	} catch (error) {
 		console.error("Error creating vendor:", error);
@@ -176,7 +208,7 @@ export async function updateVendor(vendorId, updates, restaurantId) {
 		// Verify vendor exists and belongs to restaurant
 		const { data: existing, error: checkError } = await supabase
 			.from("vendors")
-			.select("id, name")
+			.select("id, name, vendor_code")
 			.eq("id", vendorId)
 			.eq("restaurant_id", restaurantId)
 			.single();
@@ -212,12 +244,48 @@ export async function updateVendor(vendorId, updates, restaurantId) {
 			}
 		}
 
+		// Validate vendor_code if provided
+		if (updates.vendor_code !== undefined && updates.vendor_code !== null) {
+			const codeValue = updates.vendor_code.trim();
+
+			if (codeValue.length > 0) {
+				// Vendor code format validation (alphanumeric and hyphens)
+				const codeRegex = /^[A-Z0-9-]+$/i;
+				if (!codeRegex.test(codeValue)) {
+					throw new Error("Vendor code can only contain letters, numbers, and hyphens");
+				}
+
+				// Check for duplicate vendor_code (excluding current vendor)
+				const { data: existingCode, error: codeError } = await supabase
+					.from("vendors")
+					.select("id, name")
+					.eq("restaurant_id", restaurantId)
+					.eq("vendor_code", codeValue.toUpperCase())
+					.neq("id", vendorId)
+					.maybeSingle();
+
+				if (codeError) throw codeError;
+				if (existingCode) {
+					throw new Error(`A vendor with code "${codeValue.toUpperCase()}" already exists (${existingCode.name})`);
+				}
+
+				// Normalize to uppercase
+				updates.vendor_code = codeValue.toUpperCase();
+			}
+		}
+
 		// Validate email if provided
 		if (updates.email && updates.email.trim().length > 0) {
 			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 			if (!emailRegex.test(updates.email)) {
 				throw new Error("Invalid email format");
 			}
+		}
+
+		// Handle status -> is_active conversion
+		if (updates.status !== undefined) {
+			updates.is_active = updates.status !== 'inactive';
+			delete updates.status;
 		}
 
 		// Prevent changing restaurant_id
@@ -249,7 +317,7 @@ export async function updateVendor(vendorId, updates, restaurantId) {
 
 		if (error) throw error;
 
-		console.log(`✅ Updated vendor: ${data.name} (ID: ${data.id})`);
+		console.log(`✅ Updated vendor: ${data.name} (ID: ${data.id}, Code: ${data.vendor_code || 'N/A'})`);
 		return data;
 	} catch (error) {
 		console.error("Error updating vendor:", error);
@@ -781,7 +849,7 @@ export async function getVendorSummary(vendorId, restaurantId) {
 			.select(
 				`
 				*,
-				payment_terms:payment_terms(*)
+				payment_terms!vendor_payment_info_payment_terms_id_fkey(id, name, days, description)
 			`
 			)
 			.eq("vendor_id", vendorId)
@@ -792,19 +860,36 @@ export async function getVendorSummary(vendorId, restaurantId) {
 			console.warn("Error fetching payment info:", paymentError);
 		}
 
-		// Mask banking data if present
+		// Transform and mask payment info to match PaymentTab expectations
 		let maskedPaymentInfo = null;
 		if (paymentInfo) {
 			maskedPaymentInfo = {
-				...paymentInfo,
-				account_number: paymentInfo.account_number
-					? "*".repeat(paymentInfo.account_number.length - 4) +
-					  paymentInfo.account_number.slice(-4)
-					: null,
-				routing_number: paymentInfo.routing_number
-					? "*".repeat(paymentInfo.routing_number.length - 4) +
+				id: paymentInfo.id,
+				vendor_id: paymentInfo.vendor_id,
+				restaurant_id: paymentInfo.restaurant_id,
+				// Payment terms - transformed for display
+				payment_terms_id: paymentInfo.payment_terms_id || null,
+				payment_term: paymentInfo.payment_terms?.name || "N/A",
+				payment_method: paymentInfo.preferred_payment_method || "N/A",
+				credit_limit: paymentInfo.credit_limit || 0,
+				current_balance: 0, // TODO: Calculate from purchase orders
+				// Tax info
+				tax_id_type: paymentInfo.tax_id ? "EIN" : "N/A",
+				tax_id_number: paymentInfo.tax_id || "N/A",
+				// Banking info - masked for security
+				bank_name: paymentInfo.bank_name || "N/A",
+				bank_account_type: "Checking",
+				bank_routing_number: paymentInfo.routing_number
+					? "*".repeat(Math.max(0, paymentInfo.routing_number.length - 4)) +
 					  paymentInfo.routing_number.slice(-4)
-					: null,
+					: "N/A",
+				bank_account_number: paymentInfo.account_number
+					? "*".repeat(Math.max(0, paymentInfo.account_number.length - 4)) +
+					  paymentInfo.account_number.slice(-4)
+					: "N/A",
+				notes: paymentInfo.notes || null,
+				created_at: paymentInfo.created_at,
+				updated_at: paymentInfo.updated_at,
 			};
 		}
 

@@ -128,8 +128,11 @@ export async function createVendorContact(data, vendorId, restaurantId) {
 				"Sales Rep",
 				"Account Manager",
 				"Billing Contact",
+				"AR Specialist",
+				"AP Specialist",
 				"Customer Service",
 				"Delivery Coordinator",
+				"Territory Manager",
 				"Other",
 			];
 			if (!validRoles.includes(role)) {
@@ -244,8 +247,11 @@ export async function updateVendorContact(
 				"Sales Rep",
 				"Account Manager",
 				"Billing Contact",
+				"AR Specialist",
+				"AP Specialist",
 				"Customer Service",
 				"Delivery Coordinator",
+				"Territory Manager",
 				"Other",
 			];
 			if (!validRoles.includes(updates.role)) {

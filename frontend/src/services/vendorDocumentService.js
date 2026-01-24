@@ -80,3 +80,36 @@ export async function deleteVendorDocument(vendorId, documentId) {
   const response = await api.delete(`/vendors/${vendorId}/documents/${documentId}`);
   return response.data;
 }
+
+/**
+ * Download vendor document file
+ * Uses backend proxy to avoid CORS issues with Supabase Storage
+ * @param {string} vendorId - Vendor UUID
+ * @param {string} documentId - Document UUID
+ * @param {string} fileName - Original file name for the download
+ * @returns {Promise<void>} Triggers file download in browser
+ */
+export async function downloadVendorDocument(vendorId, documentId, fileName = 'document') {
+  try {
+    const response = await api.get(`/vendors/${vendorId}/documents/${documentId}/download`, {
+      responseType: 'blob'
+    });
+
+    // Create blob URL and trigger download
+    const blob = new Blob([response.data], { type: response.headers['content-type'] });
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const link = window.document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+
+    // Clean up the blob URL
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download failed:', error);
+    throw new Error(`Failed to download document: ${error.message}`);
+  }
+}

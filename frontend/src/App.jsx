@@ -105,6 +105,14 @@ function App() {
 								}
 							/>
 							<Route
+								path="/recipes/*"
+								element={
+									<ProtectedRoute>
+										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+							<Route
 								path="/vendor-test"
 								element={
 									<ProtectedRoute>

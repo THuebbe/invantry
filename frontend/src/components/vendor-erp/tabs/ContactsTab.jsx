@@ -1,16 +1,48 @@
 // ContactsTab.jsx - Vendor contacts management
 // Shows contact persons with roles and communication preferences
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, Plus, Loader2 } from "lucide-react";
 import { useVendorContacts } from "../../../hooks/useVendorContacts";
 import ContactCard from "../components/ContactCard";
 import ContactForm from "../forms/ContactForm";
 
-export default function ContactsTab({ vendorId }) {
-  const { data: contacts = [], isLoading, error, refetch } = useVendorContacts(vendorId);
+export default function ContactsTab({ vendorId, initialContacts, onRefetch }) {
+  // Use initialContacts if provided, otherwise fall back to API call
+  const { data: fetchedContacts, isLoading: isFetching, error, refetch: apiRefetch } = useVendorContacts(vendorId, {
+    enabled: !initialContacts // Only fetch if no initial data provided
+  });
+
+  // Local state to track contacts (use initial data if available)
+  const [contacts, setContacts] = useState(initialContacts || []);
+  const [isLoading, setIsLoading] = useState(!initialContacts);
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+
+  // Update contacts when fetched data arrives (for API fallback case)
+  useEffect(() => {
+    if (fetchedContacts && !initialContacts) {
+      setContacts(fetchedContacts);
+      setIsLoading(false);
+    }
+  }, [fetchedContacts, initialContacts]);
+
+  // Update loading state when initial data is provided
+  useEffect(() => {
+    if (initialContacts) {
+      setContacts(initialContacts);
+      setIsLoading(false);
+    }
+  }, [initialContacts]);
+
+  // Handle refetch - use parent's refetch if available, otherwise use API
+  const refetch = () => {
+    if (onRefetch) {
+      onRefetch();
+    } else {
+      apiRefetch();
+    }
+  };
 
   const handleAddContact = () => {
     setEditingContact(null);
@@ -83,6 +115,7 @@ export default function ContactsTab({ vendorId }) {
               </h4>
               <ContactCard
                 contact={primaryContact}
+                vendorId={vendorId}
                 onEdit={(contact) => {
                   setEditingContact(contact);
                   setShowContactForm(true);
@@ -103,6 +136,7 @@ export default function ContactsTab({ vendorId }) {
                   <ContactCard
                     key={contact.id}
                     contact={contact}
+                    vendorId={vendorId}
                     onEdit={(contact) => {
                       setEditingContact(contact);
                       setShowContactForm(true);

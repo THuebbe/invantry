@@ -36,7 +36,7 @@ export async function getVendorPaymentInfo(vendorId, restaurantId) {
 			.select(
 				`
 				*,
-				payment_terms:payment_terms(*)
+				payment_terms!vendor_payment_info_payment_terms_id_fkey(id, name, days, description)
 			`
 			)
 			.eq("vendor_id", vendorId)
@@ -48,6 +48,9 @@ export async function getVendorPaymentInfo(vendorId, restaurantId) {
 		// Return null if no payment info exists
 		if (!data) return null;
 
+		// Debug: Log the raw data to see what's being returned
+		console.log('📋 Payment info raw data:', JSON.stringify(data, null, 2));
+
 		// Transform data to match frontend expectations
 		// Frontend expects field names from the PaymentTab component
 		return {
@@ -55,7 +58,8 @@ export async function getVendorPaymentInfo(vendorId, restaurantId) {
 			vendor_id: data.vendor_id,
 			restaurant_id: data.restaurant_id,
 			// Payment terms
-			payment_term: data.payment_terms?.term_name || "N/A",
+			payment_terms_id: data.payment_terms_id || null, // Include ID for editing
+			payment_term: data.payment_terms?.name || "N/A",
 			payment_method: data.preferred_payment_method || "N/A",
 			credit_limit: data.credit_limit || 0,
 			current_balance: 0, // TODO: Calculate from purchase orders

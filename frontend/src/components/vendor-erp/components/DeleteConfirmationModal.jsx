@@ -1,6 +1,7 @@
 // DeleteConfirmationModal.jsx - Reusable confirmation modal for delete operations
 // Provides consistent UX for all delete confirmations across vendor management
 
+import { useEffect } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function DeleteConfirmationModal({
@@ -14,6 +15,20 @@ export default function DeleteConfirmationModal({
   isDeleting = false,
   warningMessage = null
 }) {
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !isDeleting) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [isOpen, onClose, isDeleting]);
+
   if (!isOpen) return null;
 
   return (
@@ -57,10 +72,16 @@ export default function DeleteConfirmationModal({
             <button
               onClick={onConfirm}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 min-w-[100px]"
             >
-              {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <span>Delete</span>
+              )}
             </button>
           </div>
         </div>

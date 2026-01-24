@@ -9,13 +9,15 @@ import {
 /**
  * Get vendor payment info
  * @param {string} vendorId - Vendor UUID
+ * @param {Object} options - Optional query options
+ * @param {boolean} options.enabled - Whether the query should run (default: true when vendorId exists)
  * @returns {Object} Query result with payment info data
  */
-export function useVendorPaymentInfo(vendorId) {
+export function useVendorPaymentInfo(vendorId, options = {}) {
   return useQuery({
     queryKey: ['vendor-payment', vendorId],
     queryFn: () => fetchVendorPaymentInfo(vendorId),
-    enabled: !!vendorId,
+    enabled: options.enabled !== undefined ? options.enabled && !!vendorId : !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
 }

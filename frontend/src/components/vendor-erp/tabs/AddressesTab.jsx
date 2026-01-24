@@ -1,16 +1,48 @@
 // AddressesTab.jsx - Vendor addresses management
 // Shows billing, remittance, and shipping addresses
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapPin, Plus, Loader2 } from "lucide-react";
 import { useVendorAddresses } from "../../../hooks/useVendorAddresses";
 import AddressCard from "../components/AddressCard";
 import AddressForm from "../forms/AddressForm";
 
-export default function AddressesTab({ vendorId }) {
-  const { data: addresses = [], isLoading, error, refetch } = useVendorAddresses(vendorId);
+export default function AddressesTab({ vendorId, initialAddresses, onRefetch }) {
+  // Use initialAddresses if provided, otherwise fall back to API call
+  const { data: fetchedAddresses, isLoading: isFetching, error, refetch: apiRefetch } = useVendorAddresses(vendorId, {
+    enabled: !initialAddresses // Only fetch if no initial data provided
+  });
+
+  // Local state to track addresses (use initial data if available)
+  const [addresses, setAddresses] = useState(initialAddresses || []);
+  const [isLoading, setIsLoading] = useState(!initialAddresses);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+
+  // Update addresses when fetched data arrives (for API fallback case)
+  useEffect(() => {
+    if (fetchedAddresses && !initialAddresses) {
+      setAddresses(fetchedAddresses);
+      setIsLoading(false);
+    }
+  }, [fetchedAddresses, initialAddresses]);
+
+  // Update loading state when initial data is provided
+  useEffect(() => {
+    if (initialAddresses) {
+      setAddresses(initialAddresses);
+      setIsLoading(false);
+    }
+  }, [initialAddresses]);
+
+  // Handle refetch - use parent's refetch if available, otherwise use API
+  const refetch = () => {
+    if (onRefetch) {
+      onRefetch();
+    } else {
+      apiRefetch();
+    }
+  };
 
   const handleAddAddress = () => {
     setEditingAddress(null);
@@ -75,6 +107,7 @@ export default function AddressesTab({ vendorId }) {
             <AddressCard
               key={address.id}
               address={address}
+              vendorId={vendorId}
               onEdit={(address) => {
                 setEditingAddress(address);
                 setShowAddressForm(true);

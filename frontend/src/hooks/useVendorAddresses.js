@@ -12,13 +12,15 @@ import {
 /**
  * Get all addresses for a vendor
  * @param {string} vendorId - Vendor UUID
+ * @param {Object} options - Optional query options
+ * @param {boolean} options.enabled - Whether the query should run (default: true when vendorId exists)
  * @returns {Object} Query result with addresses data
  */
-export function useVendorAddresses(vendorId) {
+export function useVendorAddresses(vendorId, options = {}) {
   return useQuery({
     queryKey: ['vendor-addresses', vendorId],
     queryFn: () => fetchVendorAddresses(vendorId),
-    enabled: !!vendorId,
+    enabled: options.enabled !== undefined ? options.enabled && !!vendorId : !!vendorId,
     staleTime: 1000 * 60 * 2,
   });
 }

@@ -2,15 +2,27 @@
 // Shows summary information, notes, and key details
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FileText, Calendar } from "lucide-react";
 import ContactForm from "../forms/ContactForm";
 import AddressForm from "../forms/AddressForm";
 import DocumentForm from "../forms/DocumentForm";
 
 export default function OverviewTab({ vendorId, vendor }) {
+  const navigate = useNavigate();
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [showDocumentForm, setShowDocumentForm] = useState(false);
+
+  const handleCreatePurchaseOrder = () => {
+    navigate('/orders/create-quick-order', {
+      state: {
+        vendorId: vendorId,
+        vendorName: vendor?.name || ''
+      }
+    });
+  };
+
   if (!vendor) {
     return (
       <div className="text-center py-8">
@@ -47,21 +59,6 @@ export default function OverviewTab({ vendorId, vendor }) {
               </span>
             }
           />
-          {vendor.website && (
-            <InfoItem
-              label="Website"
-              value={
-                <a
-                  href={vendor.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-600 hover:underline text-sm"
-                >
-                  {vendor.website}
-                </a>
-              }
-            />
-          )}
         </div>
       </div>
 
@@ -121,15 +118,10 @@ export default function OverviewTab({ vendorId, vendor }) {
             Upload Document
           </button>
           <button
-            onClick={() => {
-              console.log("Create purchase order clicked");
-              alert("Create Purchase Order - Will be implemented in Phase 3");
-            }}
-            className="border border-gray-300 text-gray-600 bg-gray-50 px-3 py-2 text-sm rounded cursor-not-allowed opacity-60"
-            disabled
-            title="Coming in Phase 3"
+            onClick={handleCreatePurchaseOrder}
+            className="border border-green-500 text-green-700 bg-green-50 hover:bg-green-100 px-3 py-2 text-sm rounded transition-colors"
           >
-            Create PO (Phase 3)
+            Create Purchase Order
           </button>
         </div>
       </div>

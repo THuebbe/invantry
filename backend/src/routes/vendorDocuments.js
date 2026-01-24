@@ -87,6 +87,18 @@ router.post("/:vendorId/documents", upload.single('document'), async (req, res) 
 		const restaurantId = await getRestaurantId(req.businessId);
 		const file = req.file;
 
+		console.log('📝 Document upload request received:', {
+			vendorId,
+			restaurantId,
+			hasFile: !!file,
+			body: req.body,
+			fileDetails: file ? {
+				originalname: file.originalname,
+				mimetype: file.mimetype,
+				size: file.size
+			} : null
+		});
+
 		if (!file) {
 			return res.status(400).json({ error: 'No file uploaded' });
 		}
@@ -257,6 +269,60 @@ router.put("/:vendorId/documents/:id", async (req, res) => {
 			error.message.includes("Invalid")
 		) {
 			return res.status(400).json({ error: error.message });
+		}
+
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * GET /api/vendors/:vendorId/documents/:id/download
+ * Download document file (proxy to avoid CORS issues with Supabase Storage)
+ * Returns the file with proper headers for browser download
+ */
+router.get("/:vendorId/documents/:id/download", async (req, res) => {
+	try {
+		const { vendorId, id } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		// Get document record to find file_path
+		const document = await getVendorDocument(id, vendorId, restaurantId);
+
+		if (!document.file_path) {
+			return res.status(404).json({ error: 'Document file path not found' });
+		}
+
+		// Download file from Supabase Storage
+		const { data: fileData, error: downloadError } = await supabase.storage
+			.from('vendor-documents')
+			.download(document.file_path);
+
+		if (downloadError) {
+			console.error('Error downloading file from storage:', downloadError);
+			return res.status(500).json({ error: 'Failed to download file from storage' });
+		}
+
+		// Convert Blob to Buffer
+		const arrayBuffer = await fileData.arrayBuffer();
+		const buffer = Buffer.from(arrayBuffer);
+
+		// Set response headers for file download
+		const fileName = document.document_name || 'document';
+		const contentType = document.mime_type || 'application/octet-stream';
+
+		res.set({
+			'Content-Type': contentType,
+			'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+			'Content-Length': buffer.length,
+			'Cache-Control': 'no-cache'
+		});
+
+		res.send(buffer);
+	} catch (error) {
+		console.error("Error downloading vendor document:", error);
+
+		if (error.message === "Document not found" || error.message === "Vendor document not found") {
+			return res.status(404).json({ error: error.message });
 		}
 
 		res.status(500).json({ error: error.message });

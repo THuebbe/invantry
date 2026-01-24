@@ -2,13 +2,15 @@
 // Shows document details with expiry status badges
 
 import { useState } from "react";
-import { FileText, Download, Eye, Trash2, Calendar, AlertCircle } from "lucide-react";
+import { FileText, Download, Eye, Trash2, Calendar, AlertCircle, Loader2 } from "lucide-react";
 import { useDeleteVendorDocument } from "../../../hooks/useVendorDocuments";
+import { downloadVendorDocument } from "../../../services/vendorDocumentService";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
 
 export default function DocumentCard({ document, onSuccess }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { mutate: deleteDocument, isLoading: isDeleting } = useDeleteVendorDocument();
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { mutate: deleteDocument, isPending: isDeleting } = useDeleteVendorDocument();
 
   const handleView = () => {
     // Open document in new tab
@@ -19,18 +21,25 @@ export default function DocumentCard({ document, onSuccess }) {
     }
   };
 
-  const handleDownload = () => {
-    // Trigger browser download
-    if (document.file_url) {
-      const link = document.createElement('a');
-      link.href = document.file_url;
-      link.download = document.document_name || 'document';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      alert('Document URL not available');
+  const handleDownload = async () => {
+    // Use backend proxy to download file (avoids CORS issues with Supabase Storage)
+    if (!document.id || !document.vendor_id) {
+      alert('Document information not available');
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      await downloadVendorDocument(
+        document.vendor_id,
+        document.id,
+        document.document_name || 'document'
+      );
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download document. Please try again.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -133,11 +142,16 @@ export default function DocumentCard({ document, onSuccess }) {
           </button>
           <button
             onClick={handleDownload}
-            className="text-gray-600 hover:text-green-600 transition-colors"
-            aria-label="Download document"
-            title="Download document"
+            disabled={isDownloading}
+            className={`transition-colors ${isDownloading ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:text-green-600'}`}
+            aria-label={isDownloading ? "Downloading document" : "Download document"}
+            title={isDownloading ? "Downloading..." : "Download document"}
           >
-            <Download className="w-4 h-4" />
+            {isDownloading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
           </button>
           <button
             onClick={handleDeleteClick}

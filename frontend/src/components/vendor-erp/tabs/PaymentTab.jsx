@@ -2,17 +2,58 @@
 // Shows payment terms, tax ID (masked), banking info (masked)
 
 import { CreditCard, DollarSign, Building, Eye, EyeOff, Edit, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useVendorPaymentInfo } from "../../../hooks/useVendorPayment";
+import PaymentInfoForm from "../forms/PaymentInfoForm";
 
-export default function PaymentTab({ vendorId }) {
-  const { data: paymentInfo, isLoading, error, refetch } = useVendorPaymentInfo(vendorId);
+export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) {
+  // Use initialPaymentInfo if provided, otherwise fall back to API call
+  const { data: fetchedPaymentInfo, isLoading: isFetching, error, refetch: apiRefetch } = useVendorPaymentInfo(vendorId, {
+    enabled: !initialPaymentInfo // Only fetch if no initial data provided
+  });
+
+  // Local state to track payment info (use initial data if available)
+  const [paymentInfo, setPaymentInfo] = useState(initialPaymentInfo || null);
+  const [isLoading, setIsLoading] = useState(!initialPaymentInfo);
   const [showTaxId, setShowTaxId] = useState(false);
   const [showBankAccount, setShowBankAccount] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+
+  // Update payment info when fetched data arrives (for API fallback case)
+  useEffect(() => {
+    if (fetchedPaymentInfo && !initialPaymentInfo) {
+      setPaymentInfo(fetchedPaymentInfo);
+      setIsLoading(false);
+    }
+  }, [fetchedPaymentInfo, initialPaymentInfo]);
+
+  // Update loading state when initial data is provided
+  useEffect(() => {
+    if (initialPaymentInfo !== undefined) {
+      setPaymentInfo(initialPaymentInfo);
+      setIsLoading(false);
+    }
+  }, [initialPaymentInfo]);
+
+  // Handle refetch - use parent's refetch if available, otherwise use API
+  const refetch = () => {
+    if (onRefetch) {
+      onRefetch();
+    } else {
+      apiRefetch();
+    }
+  };
 
   const handleEdit = () => {
-    console.log("Edit payment info clicked");
-    alert("Edit payment info functionality will be implemented in Phase 2");
+    setShowPaymentForm(true);
+  };
+
+  const handleFormClose = () => {
+    setShowPaymentForm(false);
+  };
+
+  const handleFormSuccess = () => {
+    refetch(); // Refresh payment info after successful save
   };
 
   // Loading state
@@ -45,21 +86,33 @@ export default function PaymentTab({ vendorId }) {
 
   if (!paymentInfo) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-        <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-        <h3 className="text-base font-semibold text-gray-900 mb-1">
-          No payment information
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Add payment and banking details for this vendor
-        </p>
-        <button
-          onClick={handleEdit}
-          className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 text-sm rounded"
-        >
-          Add Payment Info
-        </button>
-      </div>
+      <>
+        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+          <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-gray-900 mb-1">
+            No payment information
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Add payment and banking details for this vendor
+          </p>
+          <button
+            onClick={handleEdit}
+            className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 text-sm rounded"
+          >
+            Add Payment Info
+          </button>
+        </div>
+
+        {/* Payment Info Form Modal */}
+        {showPaymentForm && (
+          <PaymentInfoForm
+            vendorId={vendorId}
+            paymentInfo={null}
+            onClose={handleFormClose}
+            onSuccess={handleFormSuccess}
+          />
+        )}
+      </>
     );
   }
 
@@ -95,7 +148,7 @@ export default function PaymentTab({ vendorId }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InfoItem label="Payment Term" value={paymentInfo.payment_term} />
-          <InfoItem label="Payment Method" value={paymentInfo.payment_method} />
+          <InfoItem label="Payment Method" value={formatPaymentMethod(paymentInfo.payment_method)} />
           <InfoItem
             label="Credit Limit"
             value={formatCurrency(paymentInfo.credit_limit)}
@@ -221,6 +274,16 @@ export default function PaymentTab({ vendorId }) {
           accessed when necessary for payment processing.
         </p>
       </div>
+
+      {/* Payment Info Form Modal */}
+      {showPaymentForm && (
+        <PaymentInfoForm
+          vendorId={vendorId}
+          paymentInfo={paymentInfo}
+          onClose={handleFormClose}
+          onSuccess={handleFormSuccess}
+        />
+      )}
     </div>
   );
 }
@@ -259,4 +322,17 @@ function formatCurrency(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+// Utility function to format payment method for display
+function formatPaymentMethod(method) {
+  if (!method || method === "N/A") return "N/A";
+  const methodLabels = {
+    "ACH": "ACH",
+    "Wire": "Wire Transfer",
+    "Check": "Check",
+    "Credit Card": "Credit Card",
+    "Other": "Other"
+  };
+  return methodLabels[method] || method;
 }

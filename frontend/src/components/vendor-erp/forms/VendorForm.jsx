@@ -1,7 +1,7 @@
 // VendorForm.jsx - Modal form for adding/editing vendors
 // Handles create and update operations with validation
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useCreateVendor, useUpdateVendor } from '../../../hooks/useVendors';
 import { validateRequired, validateVendorCode } from '../../../utils/vendorValidators';
@@ -13,15 +13,27 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
     legal_name: '',
     trade_name: '',
     status: 'active',
-    notes: '',
-    website: ''
+    notes: ''
   });
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent rapid clicks
 
   const { mutate: createVendor, isLoading: isCreating } = useCreateVendor();
   const { mutate: updateVendor, isLoading: isUpdating } = useUpdateVendor();
 
-  const isLoading = isCreating || isUpdating;
+  const isLoading = isCreating || isUpdating || isSubmitting;
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [onClose, isLoading]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -32,8 +44,12 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
       newErrors.name = nameValidation.error;
     }
 
-    // Vendor code validation (optional but must be valid format if provided)
-    if (formData.vendor_code) {
+    // Vendor code is required
+    const codeRequiredValidation = validateRequired(formData.vendor_code, 'Vendor code');
+    if (!codeRequiredValidation.valid) {
+      newErrors.vendor_code = codeRequiredValidation.error;
+    } else {
+      // If provided, must be valid format
       const codeValidation = validateVendorCode(formData.vendor_code);
       if (!codeValidation.valid) {
         newErrors.vendor_code = codeValidation.error;
@@ -47,9 +63,14 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Prevent rapid clicks
+    if (isLoading) return;
+
     if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true); // Immediately disable button
 
     const mutation = vendor ? updateVendor : createVendor;
     const mutationData = vendor
@@ -58,11 +79,22 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
 
     mutation(mutationData, {
       onSuccess: () => {
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess(formData.name, !!vendor);
         onClose();
       },
       onError: (error) => {
-        setErrors({ submit: error.message || 'An error occurred while saving the vendor.' });
+        setIsSubmitting(false); // Re-enable on error
+        // Extract error message from axios response or fall back to generic message
+        const errorMessage = error.response?.data?.error || error.message || 'An error occurred while saving the vendor.';
+
+        // Check if it's a vendor_code specific error to show inline
+        if (errorMessage.toLowerCase().includes('vendor') && errorMessage.toLowerCase().includes('code')) {
+          setErrors({ vendor_code: errorMessage });
+        } else if (errorMessage.toLowerCase().includes('name') && errorMessage.toLowerCase().includes('exists')) {
+          setErrors({ name: errorMessage });
+        } else {
+          setErrors({ submit: errorMessage });
+        }
       }
     });
   };
@@ -118,7 +150,7 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
           {/* Vendor Code */}
           <div>
             <label htmlFor="vendor_code" className="block text-sm font-medium text-gray-700 mb-1">
-              Vendor Code
+              Vendor Code <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -134,7 +166,7 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
             {errors.vendor_code && (
               <p className="mt-1 text-sm text-red-600">{errors.vendor_code}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500">Optional. Letters, numbers, and hyphens only.</p>
+            <p className="mt-1 text-xs text-gray-500">Required. Letters, numbers, and hyphens only.</p>
           </div>
 
           {/* Legal Name */}
@@ -165,22 +197,6 @@ export default function VendorForm({ vendor = null, onClose, onSuccess }) {
               onChange={(e) => handleChange('trade_name', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="e.g., Sysco"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Website */}
-          <div>
-            <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
-              Website
-            </label>
-            <input
-              type="url"
-              id="website"
-              value={formData.website}
-              onChange={(e) => handleChange('website', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="https://www.example.com"
               disabled={isLoading}
             />
           </div>

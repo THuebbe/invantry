@@ -10,7 +10,7 @@ import DeleteConfirmationModal from "./DeleteConfirmationModal";
 export default function VendorCard({ vendor, onEdit }) {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { mutate: deleteVendor, isLoading: isDeleting } = useDeleteVendor();
+  const { mutate: deleteVendor, isPending: isDeleting } = useDeleteVendor();
 
   const handleClick = () => {
     navigate(`/vendors/detail?vendorId=${vendor.id}`);

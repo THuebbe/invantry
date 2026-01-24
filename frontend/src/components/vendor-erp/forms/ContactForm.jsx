@@ -1,7 +1,7 @@
 // ContactForm.jsx - Modal form for adding/editing vendor contacts
 // Handles contact person information with roles and communication preferences
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useCreateVendorContact, useUpdateVendorContact } from '../../../hooks/useVendorContacts';
 import { validateRequired, validateEmail, validatePhone } from '../../../utils/vendorValidators';
@@ -21,11 +21,24 @@ export default function ContactForm({ vendorId, contact = null, onClose, onSucce
     notes: ''
   });
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent rapid clicks
 
   const { mutate: createContact, isLoading: isCreating } = useCreateVendorContact();
   const { mutate: updateContact, isLoading: isUpdating } = useUpdateVendorContact();
 
-  const isLoading = isCreating || isUpdating;
+  const isLoading = isCreating || isUpdating || isSubmitting;
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [onClose, isLoading]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -73,9 +86,14 @@ export default function ContactForm({ vendorId, contact = null, onClose, onSucce
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Prevent rapid clicks
+    if (isLoading) return;
+
     if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true); // Immediately disable button
 
     const mutation = contact ? updateContact : createContact;
     const mutationData = contact
@@ -88,6 +106,7 @@ export default function ContactForm({ vendorId, contact = null, onClose, onSucce
         onClose();
       },
       onError: (error) => {
+        setIsSubmitting(false); // Re-enable on error
         setErrors({ submit: error.message || 'An error occurred while saving the contact.' });
       }
     });
@@ -189,11 +208,14 @@ export default function ContactForm({ vendorId, contact = null, onClose, onSucce
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
                 disabled={isLoading}
               >
-                <option value="Account Manager">Account Manager</option>
                 <option value="Sales Rep">Sales Rep</option>
+                <option value="Account Manager">Account Manager</option>
+                <option value="Billing Contact">Billing Contact</option>
                 <option value="AR Specialist">AR Specialist</option>
-                <option value="Territory Manager">Territory Manager</option>
+                <option value="AP Specialist">AP Specialist</option>
                 <option value="Customer Service">Customer Service</option>
+                <option value="Delivery Coordinator">Delivery Coordinator</option>
+                <option value="Territory Manager">Territory Manager</option>
                 <option value="Other">Other</option>
               </select>
             </div>

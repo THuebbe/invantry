@@ -5,10 +5,11 @@ import { useState } from "react";
 import { MapPin, Phone, Mail, Star, Edit, Trash2 } from "lucide-react";
 import { useDeleteVendorAddress } from "../../../hooks/useVendorAddresses";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
+import { formatPhoneNumber } from "../../../utils/vendorFormatters";
 
-export default function AddressCard({ address, onEdit, onSuccess }) {
+export default function AddressCard({ address, vendorId, onEdit, onSuccess }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { mutate: deleteAddress, isLoading: isDeleting } = useDeleteVendorAddress();
+  const { mutate: deleteAddress, isPending: isDeleting } = useDeleteVendorAddress();
 
   const handleEdit = () => {
     onEdit(address);
@@ -19,16 +20,19 @@ export default function AddressCard({ address, onEdit, onSuccess }) {
   };
 
   const handleDeleteConfirm = () => {
-    deleteAddress(address.id, {
-      onSuccess: () => {
-        setShowDeleteModal(false);
-        if (onSuccess) onSuccess();
-      },
-      onError: (error) => {
-        console.error('Failed to delete address:', error);
-        alert(`Failed to delete address: ${error.message}`);
+    deleteAddress(
+      { vendorId: vendorId, addressId: address.id },
+      {
+        onSuccess: () => {
+          setShowDeleteModal(false);
+          if (onSuccess) onSuccess();
+        },
+        onError: (error) => {
+          console.error('Failed to delete address:', error);
+          alert(`Failed to delete address: ${error.message}`);
+        }
       }
-    });
+    );
   };
 
   // Address type badge colors
@@ -103,7 +107,7 @@ export default function AddressCard({ address, onEdit, onSuccess }) {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Phone className="w-3 h-3 text-gray-500" />
             <a href={`tel:${address.phone}`} className="hover:text-green-600">
-              {address.phone}
+              {formatPhoneNumber(address.phone)}
             </a>
           </div>
         )}

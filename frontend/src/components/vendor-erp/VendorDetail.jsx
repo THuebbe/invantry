@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useVendorSummary } from "../../hooks/useVendors";
 import VendorInfoForm from "./VendorInfoForm";
 import VendorTabs from "./VendorTabs";
+import VendorDetailSkeleton from "./VendorDetailSkeleton";
 
 // Tab content components
 import OverviewTab from "./tabs/OverviewTab";
@@ -41,12 +42,7 @@ export default function VendorDetail({ vendorId: propVendorId }) {
 
   // Loading state
   if (isLoading) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
-        <span className="ml-3 text-gray-600">Loading vendor details...</span>
-      </div>
-    );
+    return <VendorDetailSkeleton />;
   }
 
   // Error state
@@ -112,16 +108,17 @@ export default function VendorDetail({ vendorId: propVendorId }) {
   }
 
   // Render tab content based on active tab
+  // Pass vendor summary data to tabs to avoid redundant API calls
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
         return <OverviewTab vendorId={vendorId} vendor={vendor} />;
       case "addresses":
-        return <AddressesTab vendorId={vendorId} />;
+        return <AddressesTab vendorId={vendorId} initialAddresses={vendor?.addresses} onRefetch={refetch} />;
       case "contacts":
-        return <ContactsTab vendorId={vendorId} />;
+        return <ContactsTab vendorId={vendorId} initialContacts={vendor?.contacts} onRefetch={refetch} />;
       case "payment":
-        return <PaymentTab vendorId={vendorId} />;
+        return <PaymentTab vendorId={vendorId} initialPaymentInfo={vendor?.payment_info} onRefetch={refetch} />;
       case "documents":
         return <DocumentsTab vendorId={vendorId} />;
       case "performance":

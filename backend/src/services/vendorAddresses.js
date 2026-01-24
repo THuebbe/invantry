@@ -147,31 +147,15 @@ export async function createVendorAddress(data, vendorId, restaurantId) {
 			}
 		}
 
-		// Check for duplicate address_type (except 'warehouse' and 'other')
-		if (!["warehouse", "other"].includes(address_type)) {
-			const { data: existing, error: duplicateError } = await supabase
-				.from("vendor_addresses")
-				.select("id")
-				.eq("vendor_id", vendorId)
-				.eq("restaurant_id", restaurantId)
-				.eq("address_type", address_type)
-				.maybeSingle();
-
-			if (duplicateError) throw duplicateError;
-			if (existing) {
-				throw new Error(
-					`An address with type '${address_type}' already exists for this vendor`
-				);
-			}
-		}
-
-		// If is_primary is true, unset existing primary
+		// If is_primary is true, unset existing primary of the same type
+		// Only one primary address per type is allowed
 		if (is_primary) {
 			const { error: unsetError } = await supabase
 				.from("vendor_addresses")
 				.update({ is_primary: false })
 				.eq("vendor_id", vendorId)
 				.eq("restaurant_id", restaurantId)
+				.eq("address_type", address_type)
 				.eq("is_primary", true);
 
 			if (unsetError) {
@@ -258,28 +242,6 @@ export async function updateVendorAddress(
 					`Invalid address type. Must be one of: ${validTypes.join(", ")}`
 				);
 			}
-
-			// Check for duplicate address_type (except warehouse and other)
-			if (
-				!["warehouse", "other"].includes(updates.address_type) &&
-				updates.address_type !== existing.address_type
-			) {
-				const { data: duplicate, error: dupError } = await supabase
-					.from("vendor_addresses")
-					.select("id")
-					.eq("vendor_id", vendorId)
-					.eq("restaurant_id", restaurantId)
-					.eq("address_type", updates.address_type)
-					.neq("id", addressId)
-					.maybeSingle();
-
-				if (dupError) throw dupError;
-				if (duplicate) {
-					throw new Error(
-						`An address with type '${updates.address_type}' already exists`
-					);
-				}
-			}
 		}
 
 		// Validate email if provided
@@ -290,13 +252,15 @@ export async function updateVendorAddress(
 			}
 		}
 
-		// If is_primary is being set to true, unset existing primary
+		// If is_primary is being set to true, unset existing primary of the same type
 		if (updates.is_primary === true && !existing.is_primary) {
+			const addressType = updates.address_type || existing.address_type;
 			const { error: unsetError } = await supabase
 				.from("vendor_addresses")
 				.update({ is_primary: false })
 				.eq("vendor_id", vendorId)
 				.eq("restaurant_id", restaurantId)
+				.eq("address_type", addressType)
 				.eq("is_primary", true)
 				.neq("id", addressId);
 

@@ -74,7 +74,12 @@ export function useCreateVendor() {
   return useMutation({
     mutationFn: createVendor,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      // Invalidate ALL vendor list queries (with any filter combination)
+      queryClient.invalidateQueries({
+        queryKey: ['vendors'],
+        exact: false,
+        refetchType: 'active'
+      });
       queryClient.invalidateQueries({ queryKey: ['vendor-metrics'] });
     },
   });
@@ -90,9 +95,18 @@ export function useUpdateVendor() {
   return useMutation({
     mutationFn: ({ vendorId, updates }) => updateVendor(vendorId, updates),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      // Invalidate ALL vendor list queries (with any filter combination)
+      // Using exact: false ensures queries like ['vendors', {}] and ['vendors', {is_active: true}] are all invalidated
+      queryClient.invalidateQueries({
+        queryKey: ['vendors'],
+        exact: false,
+        refetchType: 'active'
+      });
+      // Invalidate specific vendor queries
       queryClient.invalidateQueries({ queryKey: ['vendor', variables.vendorId] });
       queryClient.invalidateQueries({ queryKey: ['vendor-summary', variables.vendorId] });
+      // Invalidate vendor metrics since status changes affect active/inactive counts
+      queryClient.invalidateQueries({ queryKey: ['vendor-metrics'] });
     },
   });
 }
@@ -107,7 +121,12 @@ export function useDeleteVendor() {
   return useMutation({
     mutationFn: deleteVendor,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      // Invalidate ALL vendor list queries (with any filter combination)
+      queryClient.invalidateQueries({
+        queryKey: ['vendors'],
+        exact: false,
+        refetchType: 'active'
+      });
       queryClient.invalidateQueries({ queryKey: ['vendor-metrics'] });
     },
   });

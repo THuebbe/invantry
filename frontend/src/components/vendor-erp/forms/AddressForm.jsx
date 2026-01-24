@@ -1,7 +1,7 @@
 // AddressForm.jsx - Modal form for adding/editing vendor addresses
 // Handles billing, remittance, shipping, and ship_from addresses
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { useCreateVendorAddress, useUpdateVendorAddress } from '../../../hooks/useVendorAddresses';
 import { validateRequired, validateZipCode, validateEmail, validatePhone } from '../../../utils/vendorValidators';
@@ -20,11 +20,24 @@ export default function AddressForm({ vendorId, address = null, onClose, onSucce
     is_primary: false
   });
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent rapid clicks
 
   const { mutate: createAddress, isLoading: isCreating } = useCreateVendorAddress();
   const { mutate: updateAddress, isLoading: isUpdating } = useUpdateVendorAddress();
 
-  const isLoading = isCreating || isUpdating;
+  const isLoading = isCreating || isUpdating || isSubmitting;
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !isLoading) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [onClose, isLoading]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -76,9 +89,14 @@ export default function AddressForm({ vendorId, address = null, onClose, onSucce
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Prevent rapid clicks
+    if (isLoading) return;
+
     if (!validateForm()) {
       return;
     }
+
+    setIsSubmitting(true); // Immediately disable button
 
     const mutation = address ? updateAddress : createAddress;
     const mutationData = address
@@ -91,6 +109,7 @@ export default function AddressForm({ vendorId, address = null, onClose, onSucce
         onClose();
       },
       onError: (error) => {
+        setIsSubmitting(false); // Re-enable on error
         setErrors({ submit: error.message || 'An error occurred while saving the address.' });
       }
     });

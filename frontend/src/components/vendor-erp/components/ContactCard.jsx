@@ -5,10 +5,11 @@ import { useState } from "react";
 import { User, Phone, Mail, Smartphone, Star, Edit, Trash2, FileText, CreditCard } from "lucide-react";
 import { useDeleteVendorContact } from "../../../hooks/useVendorContacts";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
+import { formatPhoneNumber } from "../../../utils/vendorFormatters";
 
-export default function ContactCard({ contact, onEdit, onSuccess }) {
+export default function ContactCard({ contact, vendorId, onEdit, onSuccess }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { mutate: deleteContact, isLoading: isDeleting } = useDeleteVendorContact();
+  const { mutate: deleteContact, isPending: isDeleting } = useDeleteVendorContact();
 
   const handleEdit = () => {
     onEdit(contact);
@@ -19,16 +20,19 @@ export default function ContactCard({ contact, onEdit, onSuccess }) {
   };
 
   const handleDeleteConfirm = () => {
-    deleteContact(contact.id, {
-      onSuccess: () => {
-        setShowDeleteModal(false);
-        if (onSuccess) onSuccess();
-      },
-      onError: (error) => {
-        console.error('Failed to delete contact:', error);
-        alert(`Failed to delete contact: ${error.message}`);
+    deleteContact(
+      { vendorId: vendorId, contactId: contact.id },
+      {
+        onSuccess: () => {
+          setShowDeleteModal(false);
+          if (onSuccess) onSuccess();
+        },
+        onError: (error) => {
+          console.error('Failed to delete contact:', error);
+          alert(`Failed to delete contact: ${error.message}`);
+        }
       }
-    });
+    );
   };
 
   return (
@@ -97,7 +101,7 @@ export default function ContactCard({ contact, onEdit, onSuccess }) {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Phone className="w-4 h-4 text-gray-500" />
             <a href={`tel:${contact.phone}`} className="hover:text-green-600">
-              {contact.phone}
+              {formatPhoneNumber(contact.phone)}
             </a>
           </div>
         )}
@@ -105,7 +109,7 @@ export default function ContactCard({ contact, onEdit, onSuccess }) {
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Smartphone className="w-4 h-4 text-gray-500" />
             <a href={`tel:${contact.mobile}`} className="hover:text-green-600">
-              {contact.mobile}
+              {formatPhoneNumber(contact.mobile)}
             </a>
           </div>
         )}

@@ -274,3 +274,44 @@ export function getMetricsForRoute(pathname) {
 	const basePath = "/" + pathname.split("/")[1];
 	return metricsBySection[basePath] || dashboardMetrics;
 }
+
+// Recipe section metrics
+export const recipeMetrics = [
+	{
+		id: "below-reorder",
+		label: "Below Reorder Point",
+		icon: AlertTriangle,
+		color: "red",
+		dataKey: "belowReorderCount",
+		format: "number",
+		description: "Items needing restock",
+	},
+	{
+		id: "expiring-items",
+		label: "Expiring This Week",
+		icon: Calendar,
+		color: "yellow",
+		dataKey: "expiringThisWeek",
+		format: "number",
+		description: "Use or lose items",
+	},
+	{
+		id: "most-used",
+		label: "Most Used This Month",
+		icon: TrendingUp,
+		color: "blue",
+		dataKey: "topUsedIngredient",
+		format: "text", // Special format for ingredient name
+		description: "Highest usage ingredient",
+	},
+	{
+		id: "inventory-turnover",
+		label: "Inventory Turnover",
+		icon: Package,
+		color: "green",
+		dataKey: "inventoryTurnoverRate",
+		format: "decimal", // e.g., 2.5x
+		description: "Average turnover rate",
+		suffix: "x", // Add 'x' after the number
+	},
+];

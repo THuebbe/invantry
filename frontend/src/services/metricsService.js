@@ -34,3 +34,8 @@ export async function fetchReportsMetrics() {
 	const response = await api.get("/metrics/reports");
 	return response.data;
 }
+
+export async function fetchRecipeMetric() {
+	const response = await api.get("/metrics/recipes");
+	return response.data;
+}

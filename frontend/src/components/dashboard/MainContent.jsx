@@ -9,6 +9,7 @@ import ReportsContent from "./content/ReportsContent";
 import MenuItemsContent from "./content/MenuItemsContent";
 import RecipeBuilder from "../menu-items/RecipeBuilder";
 import VendorsContent from "../vendor-erp/VendorsContent";
+import RecipesContent from "./content/RecipesContent";
 
 export default function MainContent() {
 	const location = useLocation();
@@ -29,7 +30,7 @@ export default function MainContent() {
 	const params = {
 		...queryParams,
 		// For routes like /dashboard/orders/edit-po/:id, extract the id from path
-		...(thirdPart && { poId: thirdPart })
+		...(thirdPart && { poId: thirdPart }),
 	};
 
 	// Handle recipe builder FIRST: /menu-items/:id/recipe
@@ -46,11 +47,23 @@ export default function MainContent() {
 		case "receiving":
 			return <ReceivingContent subsection={subsection} />;
 		case "orders":
-			return <OrdersContent subsection={subsection} params={params} />;
+			return (
+				<OrdersContent
+					subsection={subsection}
+					params={params}
+				/>
+			);
 		case "vendors":
-			return <VendorsContent subsection={subsection} params={params} />;
+			return (
+				<VendorsContent
+					subsection={subsection}
+					params={params}
+				/>
+			);
 		case "reports":
 			return <ReportsContent subsection={subsection} />;
+		case "recipes":
+			return <RecipesContent subsection={subsection} />;
 		case "dashboard":
 		default:
 			return <DashboardContent />;

@@ -94,7 +94,8 @@ router.post("/", async (req, res) => {
 		}
 		if (
 			error.message.includes("required") ||
-			error.message.includes("Invalid")
+			error.message.includes("Invalid") ||
+			error.message.includes("can only contain")
 		) {
 			return res.status(400).json({ error: error.message });
 		}
@@ -189,7 +190,8 @@ router.put("/:id", async (req, res) => {
 		if (
 			error.message.includes("required") ||
 			error.message.includes("Invalid") ||
-			error.message.includes("cannot be empty")
+			error.message.includes("cannot be empty") ||
+			error.message.includes("can only contain")
 		) {
 			return res.status(400).json({ error: error.message });
 		}
