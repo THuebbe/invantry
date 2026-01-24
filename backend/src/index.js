@@ -19,6 +19,12 @@ import menuItemRoutes from "./routes/menuItemRoutes.js";
 import recipeRoutes from "./routes/recipeRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import vendorsRoutes from "./routes/vendors.js";
+import paymentTermsRoutes from "./routes/paymentTerms.js";
+import vendorAddressesRoutes from "./routes/vendorAddresses.js";
+import vendorContactsRoutes from "./routes/vendorContacts.js";
+import vendorPaymentRoutes from "./routes/vendorPayment.js";
+import vendorDocumentsRoutes from "./routes/vendorDocuments.js";
+import vendorScorecardsRoutes from "./routes/vendorScorecards.js";
 // Load environment variables
 
 // Initialize Express app
@@ -60,6 +66,12 @@ app.use("/api/menu-items", menuItemRoutes);
 app.use("/api/recipes", recipeRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/vendors", vendorsRoutes);
+app.use("/api/payment-terms", paymentTermsRoutes);
+app.use("/api/vendors", vendorAddressesRoutes);
+app.use("/api/vendors", vendorContactsRoutes);
+app.use("/api/vendors", vendorPaymentRoutes);
+app.use("/api/vendors", vendorDocumentsRoutes);
+app.use("/api/vendors", vendorScorecardsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

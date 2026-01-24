@@ -19,7 +19,7 @@ export function useMetrics() {
 					return await fetchWasteMetrics("week");
 				}
 
-				// Use regular metrics endpoint for other sections
+				// Use regular metrics endpoint for all sections (including vendors)
 				return await fetchMetrics(section);
 			} catch (error) {
 				// Fallback for reports section (endpoint not built yet)

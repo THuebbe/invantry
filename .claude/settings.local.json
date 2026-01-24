@@ -1,7 +1,33 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(cd:*)",
+      "Bash(grep:*)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(node scripts/validate-vendor-erp-db.js:*)",
+      "Bash(node scripts/validate-vendor-erp-db-simple.js:*)",
+      "Bash(node -e \"\nimport\\(''dotenv''\\).then\\(dotenv => {\n  dotenv.default.config\\({ path: ''./backend/.env'' }\\);\n  return import\\(''@supabase/supabase-js''\\);\n}\\).then\\(\\({ createClient }\\) => {\n  const supabase = createClient\\(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY\\);\n  return supabase.from\\(''vendors''\\).select\\(''*''\\).limit\\(1\\);\n}\\).then\\(\\({ data, error }\\) => {\n  if \\(error\\) {\n    console.error\\(''Error:'', error\\);\n  } else if \\(data && data.length > 0\\) {\n    console.log\\(''Vendors table columns:''\\);\n    Object.keys\\(data[0]\\).forEach\\(col => console.log\\(''  -'', col\\)\\);\n  } else {\n    console.log\\(''No data in vendors table''\\);\n  }\n}\\).catch\\(err => console.error\\(''Script error:'', err\\)\\);\n\")",
+      "Bash(node scripts/check-vendors-columns.js:*)",
+      "Bash(node scripts/check-vendor-contacts.js:*)",
+      "Bash(node -e:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(test:*)",
+      "Bash(tee:*)",
+      "Bash(timeout 180 node scripts/seed-vendor-complete.js --clean)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd comprehensive Vendor ERP module implementation\n\nBACKEND:\n- New API routes for vendor management \\(CRUD operations\\)\n- Payment terms API \\(/api/payment-terms\\)\n- Vendor addresses API \\(/api/vendor-addresses\\)\n- Vendor contacts API \\(/api/vendor-contacts\\)\n- Vendor documents/uploads API \\(/api/vendor-documents\\)\n- Vendor payment info API \\(/api/vendor-payment\\)\n- Vendor scorecards/metrics API \\(/api/vendor-scorecards\\)\n- Extended vendors API with full ERP capabilities\n- Service layer for all vendor-related business logic\n- Database migrations \\(011-021\\) for vendor ERP schema\n- Seed data scripts for testing vendor functionality\n- Comprehensive API documentation\n\nFRONTEND:\n- VendorsContent main component with list/detail views\n- VendorList with search, filter, and sort capabilities\n- VendorDetail with tabbed interface\n- VendorForm for creating/editing vendors\n- VendorMetricsDashboard for performance tracking\n- Tab components: Overview, Items, Contacts, Addresses, Payment, Documents, Performance\n- Reusable card components for contacts, addresses, documents\n- Delete confirmation modal\n- Custom hooks for all vendor data operations \\(useVendors, useVendorContacts, etc.\\)\n- Service layer matching backend APIs\n- Vendor configuration and validation utilities\n- Full integration with existing dashboard layout\n\nDATABASE:\n- payment_terms table\n- Extended vendors table with ERP fields\n- vendor_addresses table \\(billing/shipping\\)\n- vendor_contacts table\n- vendor_payment_info table\n- vendor_purchasing_data table\n- Extended ingredient_vendor_mapping\n- vendor_documents table\n- vendor_scorecards table\n- Comprehensive indexes and triggers\n- Data migration for existing vendor records\n\nDOCUMENTATION:\n- Implementation reports and completion summaries\n- Testing guides and checklists\n- Architecture documentation\n- Quick reference guides\n- Bug fix reports\n\nThis is a complete Vendor ERP system ready for testing before merge to main.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(node scripts/verify-p2-fixes.js:*)",
+      "Bash(node scripts/run-p2-migrations.js:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm run lint)",
+      "Bash(node --check src/services/vendorPayment.js)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

@@ -11,6 +11,8 @@ import {
 	Trash2,
 	Users,
 	BarChart3,
+	FileText,
+	Award,
 } from "lucide-react";
 
 // Dashboard (overview) metrics
@@ -215,6 +217,47 @@ export const receivingMetrics = [
 	},
 ];
 
+// Vendor section metrics
+export const vendorMetrics = [
+	{
+		id: "active-vendors",
+		label: "Active Vendors",
+		icon: Users,
+		color: "blue",
+		dataKey: "activeVendorsCount",
+		format: "number",
+		description: "Currently active vendors",
+	},
+	{
+		id: "avg-lead-time",
+		label: "Avg Lead Time",
+		icon: Clock,
+		color: "purple",
+		dataKey: "avgLeadTimeDays",
+		format: "number",
+		description: "Average delivery lead time",
+		suffix: " days",
+	},
+	{
+		id: "docs-expiring",
+		label: "Documents Expiring",
+		icon: FileText,
+		color: "yellow",
+		dataKey: "documentsExpiringSoon",
+		format: "number",
+		description: "Expiring within 30 days",
+	},
+	{
+		id: "grade-a-vendors",
+		label: "Grade A Vendors",
+		icon: Award,
+		color: "green",
+		dataKey: "gradeAVendorsCount",
+		format: "number",
+		description: "Top performing vendors",
+	},
+];
+
 // Map sections to their metrics
 export const metricsBySection = {
 	"/dashboard": dashboardMetrics,
@@ -222,6 +265,7 @@ export const metricsBySection = {
 	"/orders": ordersMetrics,
 	"/reports": reportsMetrics,
 	"/receiving": receivingMetrics,
+	"/vendors": vendorMetrics,
 };
 
 // Helper function to get metrics for current route
@@ -230,3 +274,44 @@ export function getMetricsForRoute(pathname) {
 	const basePath = "/" + pathname.split("/")[1];
 	return metricsBySection[basePath] || dashboardMetrics;
 }
+
+// Recipe section metrics
+export const recipeMetrics = [
+	{
+		id: "below-reorder",
+		label: "Below Reorder Point",
+		icon: AlertTriangle,
+		color: "red",
+		dataKey: "belowReorderCount",
+		format: "number",
+		description: "Items needing restock",
+	},
+	{
+		id: "expiring-items",
+		label: "Expiring This Week",
+		icon: Calendar,
+		color: "yellow",
+		dataKey: "expiringThisWeek",
+		format: "number",
+		description: "Use or lose items",
+	},
+	{
+		id: "most-used",
+		label: "Most Used This Month",
+		icon: TrendingUp,
+		color: "blue",
+		dataKey: "topUsedIngredient",
+		format: "text", // Special format for ingredient name
+		description: "Highest usage ingredient",
+	},
+	{
+		id: "inventory-turnover",
+		label: "Inventory Turnover",
+		icon: Package,
+		color: "green",
+		dataKey: "inventoryTurnoverRate",
+		format: "decimal", // e.g., 2.5x
+		description: "Average turnover rate",
+		suffix: "x", // Add 'x' after the number
+	},
+];

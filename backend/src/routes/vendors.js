@@ -14,6 +14,8 @@ import {
 	createIngredientVendorMapping,
 	updateIngredientVendorMapping,
 	deleteIngredientVendorMapping,
+	getVendorSummary,
+	getVendorMetrics,
 } from "../services/vendors.js";
 
 const router = express.Router();
@@ -92,9 +94,50 @@ router.post("/", async (req, res) => {
 		}
 		if (
 			error.message.includes("required") ||
-			error.message.includes("Invalid")
+			error.message.includes("Invalid") ||
+			error.message.includes("can only contain")
 		) {
 			return res.status(400).json({ error: error.message });
+		}
+
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * GET /api/vendors/metrics
+ * Get 4 dashboard metrics for vendors
+ * IMPORTANT: This must come BEFORE /:id route to avoid Express matching "metrics" as an ID
+ */
+router.get("/metrics", async (req, res) => {
+	try {
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		const metrics = await getVendorMetrics(restaurantId);
+		res.json(metrics);
+	} catch (error) {
+		console.error("Error fetching vendor metrics:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * GET /api/vendors/:id/summary
+ * Get vendor with all related data (addresses, contacts, payment info, items, etc.)
+ * IMPORTANT: This must come BEFORE /:id route to avoid Express matching ":id/summary" incorrectly
+ */
+router.get("/:id/summary", async (req, res) => {
+	try {
+		const { id } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		const summary = await getVendorSummary(id, restaurantId);
+		res.json(summary);
+	} catch (error) {
+		console.error("Error fetching vendor summary:", error);
+
+		if (error.message === "Vendor not found") {
+			return res.status(404).json({ error: error.message });
 		}
 
 		res.status(500).json({ error: error.message });
@@ -147,7 +190,8 @@ router.put("/:id", async (req, res) => {
 		if (
 			error.message.includes("required") ||
 			error.message.includes("Invalid") ||
-			error.message.includes("cannot be empty")
+			error.message.includes("cannot be empty") ||
+			error.message.includes("can only contain")
 		) {
 			return res.status(400).json({ error: error.message });
 		}

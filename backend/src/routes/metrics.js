@@ -7,6 +7,7 @@ import {
 	getOrderMetrics,
 	getReceivingMetrics,
 	getMenuItemsMetrics,
+	getVendorMetrics,
 } from "../services/metrics.js";
 import { requireAuth } from "../middleware/auth.js";
 import { supabase } from "../services/supabase.js";
@@ -248,6 +249,37 @@ router.get("/menu-items", async (req, res) => {
 		res.json(metrics);
 	} catch (error) {
 		console.error("Error in GET /api/metrics/menu-items:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * GET /api/metrics/vendors
+ * Get vendor ERP module metrics
+ * Returns active vendor count, avg lead time, expiring documents, and Grade A vendor count
+ */
+router.get("/vendors", async (req, res) => {
+	try {
+		// Get restaurant_id from authenticated user's business
+		const { data: restaurant, error: restaurantError } = await supabase
+			.from("restaurants")
+			.select("id")
+			.eq("business_id", req.businessId)
+			.single();
+
+		if (restaurantError) throw restaurantError;
+		if (!restaurant) {
+			return res.status(404).json({
+				error: "No restaurant found for this business. Please contact support.",
+			});
+		}
+
+		const restaurant_id = restaurant.id;
+
+		const metrics = await getVendorMetrics(restaurant_id);
+		res.json(metrics);
+	} catch (error) {
+		console.error("❌ Vendor metrics error:", error);
 		res.status(500).json({ error: error.message });
 	}
 });

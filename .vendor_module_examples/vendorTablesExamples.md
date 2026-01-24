@@ -8,12 +8,8 @@ id UUID / bigint PK Primary key
 vendor_code string (unique) Human-friendly ID (e.g. "VEND-000123")
 legal_name string Vendor’s formal/legal name
 trade_name string “Doing business as” name (optional)
-status enum(‘active’, ‘inactive’, ‘suspended’) Controls availability in POs
-vendor_group_id FK → vendor_groups.id Categorization (optional but useful)
-tax_id string Vendor tax identifier (EIN / VAT / GST)
-default_currency string ISO currency code
-📍 Addresses Table (vendor_addresses)
 
+📍 Addresses Table (vendor_addresses)
 Vendors often have multiple addresses: billing, remittance, shipping, warehouse, etc.
 
 vendor_addresses
@@ -29,37 +25,39 @@ postal_code string
 country string
 phone string
 email string
-is_default boolean
-👥 Contacts Table (vendor_contacts)
+website string
 
+👥 Contacts Table (vendor_contacts)
 ERP vendors typically have multiple contacts (sales rep, account manager, billing contact).
 
 vendor_contacts
 Field Type Notes
 id UUID PK
 vendor_id FK → vendors.id
-name string
+first_name string
+last_name string
 title string
 phone string
 email string
-role enum(‘sales_rep’, ‘account_manager’, ‘billing’, ‘support’, ‘other’)
-is_primary boolean
-💵 Banking / Remittance (vendor_payment_info)
 
+💵 Banking / Remittance (vendor_payment_info)
 Used by Accounts Payable.
 
 vendor_payment_info
-Field Type
+Field Type Notes
 id UUID PK
 vendor_id FK → vendors.id
+tax_id string Vendor tax identifier (EIN / VAT / GST)
+credit_limit integer
+payment_terms_id FK → payment_terms.id
 bank_name string
 account_number (encrypted) string
 routing_number (encrypted) string
 swift_code string
 preferred_payment_method enum(‘ach’, ‘wire’, ‘check’, ‘credit_card’)
-payment_terms_id FK → payment_terms.id
-🕒 Vendor Purchasing Defaults (vendor_purchasing_data)
+default_currency string ISO currency code
 
+🕒 Vendor Purchasing Defaults (vendor_purchasing_data)
 Used when auto-populating a Purchase Order.
 
 vendor_purchasing_data
@@ -68,17 +66,16 @@ id UUID PK
 vendor_id FK → vendors.id
 lead_time_days integer Default days for delivery
 minimum_order_value numeric Minimum PO total
-minimum_order_quantity integer Optional
 default_freight_terms string (FOB Origin, FOB Destination, etc.)
 default_incoterm string (EXW, CIF, DDP, etc.)
 notes text
-📦 Vendor–Item Cross Reference (vendor_items)
 
+📦 Vendor–Item Cross Reference (vendor_items)
 This is one of the most important ERP tables.
 Each vendor can supply many items, each with vendor-specific data.
 
 vendor_items
-Field Type
+Field Type Notes
 id UUID PK
 vendor_id FK → vendors.id
 item_id FK → items.id
@@ -90,21 +87,23 @@ uom string
 lead_time_days integer
 minimum_qty integer
 last_updated timestamp
-🧾 Compliance / Documents (vendor_documents)
 
+🧾 Compliance / Documents (vendor_documents)
 ERPs often track certifications, insurance, tax forms, etc.
 
 vendor_documents
-Field Type
+Field Type Notes
 id UUID PK
 vendor_id FK → vendors.id
 document_type enum(‘w9’, ‘contract’, ‘insurance’, ‘certification’, ‘other’)
 file_url string
 expires_at date
 uploaded_at timestamp
+
 ⭐ Vendor Score / Performance (optional but VERY useful)
+
 vendor_scorecards
-Field Type
+Field Type Notes
 id UUID PK
 vendor_id FK → vendors.id
 metric string
@@ -112,12 +111,8 @@ score numeric
 period_start date
 period_end date
 notes text
+
 📚 Supporting Tables
-vendor_groups
-
-(“Office Supplies”, “Raw Materials”, “Subcontractor”, etc.)
-
-| id | name | description |
 
 payment_terms
 

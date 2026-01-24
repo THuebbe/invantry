@@ -8,6 +8,7 @@ import {
 	BarChart3,
 	Trash2,
 	ChefHat,
+	Building2,
 } from "lucide-react";
 
 export const menuItems = [
@@ -68,6 +69,17 @@ export const menuItems = [
 			{ id: "all-orders", label: "All Orders", path: "/orders" },
 			{ id: "create-order", label: "Create Order", path: "/orders/create" },
 			{ id: "pending", label: "Pending Orders", path: "/orders/pending" },
+		],
+	},
+	{
+		id: "vendors",
+		label: "Vendors",
+		icon: Building2,
+		path: "/vendors",
+		subItems: [
+			{ id: "all-vendors", label: "All Vendors", path: "/vendors" },
+			{ id: "vendor-metrics", label: "Vendor Metrics", path: "/vendors/metrics" },
+			{ id: "add-vendor", label: "Add Vendor", path: "/vendors/add" },
 		],
 	},
 	{
