@@ -541,6 +541,10 @@ export async function createIngredientVendorMapping(
 			unit_cost,
 			lead_time_days,
 			minimum_order_qty,
+			pack_size,
+			pack_uom,
+			vendor_barcode,
+			vendor_item_description,
 			notes,
 		} = mappingData;
 
@@ -568,6 +572,13 @@ export async function createIngredientVendorMapping(
 			}
 		}
 
+		if (pack_size !== undefined && pack_size !== null) {
+			const size = parseFloat(pack_size);
+			if (isNaN(size) || size <= 0) {
+				throw new Error("Pack size must be a positive number");
+			}
+		}
+
 		// If is_preferred is true, unset other preferred vendors for this ingredient
 		if (is_preferred) {
 			const { error: unsetError } = await supabase
@@ -587,6 +598,7 @@ export async function createIngredientVendorMapping(
 			.insert({
 				vendor_id: vendorId,
 				ingredient_id: ingredientId,
+				restaurant_id: restaurantId,
 				is_preferred,
 				vendor_item_number: vendor_item_number?.trim() || null,
 				unit_cost: unit_cost !== undefined ? parseFloat(unit_cost) : null,
@@ -596,6 +608,10 @@ export async function createIngredientVendorMapping(
 					minimum_order_qty !== undefined
 						? parseFloat(minimum_order_qty)
 						: null,
+				pack_size: pack_size !== undefined ? parseFloat(pack_size) : null,
+				pack_uom: pack_uom?.trim() || null,
+				vendor_barcode: vendor_barcode?.trim() || null,
+				vendor_item_description: vendor_item_description?.trim() || null,
 				notes: notes?.trim() || null,
 			})
 			.select()
@@ -723,6 +739,19 @@ export async function updateIngredientVendorMapping(
 				updates.minimum_order_qty !== null
 					? parseFloat(updates.minimum_order_qty)
 					: null;
+		}
+		if (updates.pack_size !== undefined) {
+			updateData.pack_size =
+				updates.pack_size !== null ? parseFloat(updates.pack_size) : null;
+		}
+		if (updates.pack_uom !== undefined) {
+			updateData.pack_uom = updates.pack_uom?.trim() || null;
+		}
+		if (updates.vendor_barcode !== undefined) {
+			updateData.vendor_barcode = updates.vendor_barcode?.trim() || null;
+		}
+		if (updates.vendor_item_description !== undefined) {
+			updateData.vendor_item_description = updates.vendor_item_description?.trim() || null;
 		}
 		if (updates.notes !== undefined) {
 			updateData.notes = updates.notes?.trim() || null;

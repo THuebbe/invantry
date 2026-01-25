@@ -341,3 +341,300 @@ export async function deleteVendorPaymentInfo(vendorId, restaurantId) {
 		throw error;
 	}
 }
+
+/**
+ * Calculate the current balance (sum of unpaid invoice balances) for a vendor
+ * @param {string} vendorId - Vendor UUID
+ * @param {string} restaurantId - Restaurant UUID for multi-tenant enforcement
+ * @returns {Promise<Object>} Balance information
+ */
+export async function calculateVendorBalance(vendorId, restaurantId) {
+	try {
+		// Verify vendor exists
+		const { data: vendor, error: vendorError } = await supabase
+			.from("vendors")
+			.select("id, name")
+			.eq("id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.single();
+
+		if (vendorError) {
+			if (vendorError.code === "PGRST116") {
+				throw new Error("Vendor not found");
+			}
+			throw vendorError;
+		}
+
+		// Get all unpaid invoices (pending, partial, overdue)
+		const { data: invoices, error: invoiceError } = await supabase
+			.from("vendor_invoices")
+			.select("balance, status")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.in("status", ["pending", "partial", "overdue"]);
+
+		if (invoiceError) throw invoiceError;
+
+		// Calculate total balance
+		const totalBalance = (invoices || []).reduce((sum, inv) => {
+			return sum + parseFloat(inv.balance || 0);
+		}, 0);
+
+		// Count invoices by status
+		const statusCounts = {
+			pending: 0,
+			partial: 0,
+			overdue: 0,
+		};
+
+		(invoices || []).forEach(inv => {
+			if (statusCounts[inv.status] !== undefined) {
+				statusCounts[inv.status]++;
+			}
+		});
+
+		// Calculate overdue total
+		const totalOverdue = (invoices || []).reduce((sum, inv) => {
+			if (inv.status === 'overdue') {
+				return sum + parseFloat(inv.balance || 0);
+			}
+			return sum;
+		}, 0);
+
+		return {
+			vendor_id: vendorId,
+			vendor_name: vendor.name,
+			total_outstanding: totalBalance,
+			total_overdue: totalOverdue,
+			current_balance: totalBalance, // Keep for backwards compatibility
+			invoice_count: invoices?.length || 0,
+			invoices_pending: statusCounts.pending,
+			invoices_partial: statusCounts.partial,
+			invoices_overdue: statusCounts.overdue,
+		};
+	} catch (error) {
+		console.error("Error calculating vendor balance:", error);
+		throw error;
+	}
+}
+
+/**
+ * Get aging report for a vendor (breakdown of outstanding balances by age)
+ * @param {string} vendorId - Vendor UUID
+ * @param {string} restaurantId - Restaurant UUID for multi-tenant enforcement
+ * @returns {Promise<Object>} Aging report with buckets
+ */
+export async function getVendorAgingReport(vendorId, restaurantId) {
+	try {
+		// Verify vendor exists
+		const { data: vendor, error: vendorError } = await supabase
+			.from("vendors")
+			.select("id, name, vendor_code")
+			.eq("id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.single();
+
+		if (vendorError) {
+			if (vendorError.code === "PGRST116") {
+				throw new Error("Vendor not found");
+			}
+			throw vendorError;
+		}
+
+		// Get all unpaid invoices
+		const { data: invoices, error: invoiceError } = await supabase
+			.from("vendor_invoices")
+			.select("id, invoice_number, due_date, balance, amount, status")
+			.eq("vendor_id", vendorId)
+			.eq("restaurant_id", restaurantId)
+			.in("status", ["pending", "partial", "overdue"])
+			.order("due_date", { ascending: true });
+
+		if (invoiceError) throw invoiceError;
+
+		// Initialize aging buckets
+		const aging = {
+			current: { amount: 0, count: 0, invoices: [] },
+			days30: { amount: 0, count: 0, invoices: [] },
+			days60: { amount: 0, count: 0, invoices: [] },
+			days90: { amount: 0, count: 0, invoices: [] },
+			over90: { amount: 0, count: 0, invoices: [] },
+		};
+
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		// Categorize each invoice into aging buckets
+		(invoices || []).forEach(invoice => {
+			const dueDate = new Date(invoice.due_date);
+			dueDate.setHours(0, 0, 0, 0);
+			const daysPastDue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+			const balance = parseFloat(invoice.balance || 0);
+
+			const invoiceInfo = {
+				id: invoice.id,
+				invoice_number: invoice.invoice_number,
+				due_date: invoice.due_date,
+				balance: balance,
+				days_past_due: daysPastDue > 0 ? daysPastDue : 0,
+			};
+
+			if (daysPastDue <= 0) {
+				// Current (not yet due)
+				aging.current.amount += balance;
+				aging.current.count++;
+				aging.current.invoices.push(invoiceInfo);
+			} else if (daysPastDue <= 30) {
+				// 1-30 days past due
+				aging.days30.amount += balance;
+				aging.days30.count++;
+				aging.days30.invoices.push(invoiceInfo);
+			} else if (daysPastDue <= 60) {
+				// 31-60 days past due
+				aging.days60.amount += balance;
+				aging.days60.count++;
+				aging.days60.invoices.push(invoiceInfo);
+			} else if (daysPastDue <= 90) {
+				// 61-90 days past due
+				aging.days90.amount += balance;
+				aging.days90.count++;
+				aging.days90.invoices.push(invoiceInfo);
+			} else {
+				// Over 90 days past due
+				aging.over90.amount += balance;
+				aging.over90.count++;
+				aging.over90.invoices.push(invoiceInfo);
+			}
+		});
+
+		// Calculate totals
+		const totalBalance =
+			aging.current.amount +
+			aging.days30.amount +
+			aging.days60.amount +
+			aging.days90.amount +
+			aging.over90.amount;
+
+		const totalInvoices =
+			aging.current.count +
+			aging.days30.count +
+			aging.days60.count +
+			aging.days90.count +
+			aging.over90.count;
+
+		// Return flat structure for frontend AgingSummaryCard
+		return {
+			vendor_id: vendorId,
+			vendor_name: vendor.name,
+			vendor_code: vendor.vendor_code,
+			as_of_date: today.toISOString().split("T")[0],
+			// Flat keys matching frontend AGING_BUCKETS
+			current: aging.current.amount,
+			days_1_30: aging.days30.amount,
+			days_31_60: aging.days60.amount,
+			days_61_90: aging.days90.amount,
+			days_90_plus: aging.over90.amount,
+			total: totalBalance,
+			total_invoices: totalInvoices,
+			// Also include detailed breakdown for other use cases
+			details: {
+				current: {
+					amount: aging.current.amount,
+					count: aging.current.count,
+					invoices: aging.current.invoices,
+				},
+				days_1_30: {
+					amount: aging.days30.amount,
+					count: aging.days30.count,
+					invoices: aging.days30.invoices,
+				},
+				days_31_60: {
+					amount: aging.days60.amount,
+					count: aging.days60.count,
+					invoices: aging.days60.invoices,
+				},
+				days_61_90: {
+					amount: aging.days90.amount,
+					count: aging.days90.count,
+					invoices: aging.days90.invoices,
+				},
+				days_90_plus: {
+					amount: aging.over90.amount,
+					count: aging.over90.count,
+					invoices: aging.over90.invoices,
+				},
+			},
+		};
+	} catch (error) {
+		console.error("Error generating vendor aging report:", error);
+		throw error;
+	}
+}
+
+/**
+ * Get aging summary for all vendors in a restaurant
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<Object>} Summary aging report across all vendors
+ */
+export async function getRestaurantAgingSummary(restaurantId) {
+	try {
+		// Get all unpaid invoices with vendor info
+		const { data: invoices, error: invoiceError } = await supabase
+			.from("vendor_invoices")
+			.select(`
+				id, invoice_number, due_date, balance, vendor_id,
+				vendor:vendors(id, name, vendor_code)
+			`)
+			.eq("restaurant_id", restaurantId)
+			.in("status", ["pending", "partial", "overdue"]);
+
+		if (invoiceError) throw invoiceError;
+
+		// Initialize summary
+		const summary = {
+			current: 0,
+			days_1_30: 0,
+			days_31_60: 0,
+			days_61_90: 0,
+			over_90: 0,
+			total: 0,
+			vendor_count: 0,
+			invoice_count: invoices?.length || 0,
+		};
+
+		const vendorIds = new Set();
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		// Categorize each invoice
+		(invoices || []).forEach(invoice => {
+			vendorIds.add(invoice.vendor_id);
+			const dueDate = new Date(invoice.due_date);
+			dueDate.setHours(0, 0, 0, 0);
+			const daysPastDue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+			const balance = parseFloat(invoice.balance || 0);
+
+			summary.total += balance;
+
+			if (daysPastDue <= 0) {
+				summary.current += balance;
+			} else if (daysPastDue <= 30) {
+				summary.days_1_30 += balance;
+			} else if (daysPastDue <= 60) {
+				summary.days_31_60 += balance;
+			} else if (daysPastDue <= 90) {
+				summary.days_61_90 += balance;
+			} else {
+				summary.over_90 += balance;
+			}
+		});
+
+		summary.vendor_count = vendorIds.size;
+		summary.as_of_date = today.toISOString().split("T")[0];
+
+		return summary;
+	} catch (error) {
+		console.error("Error generating restaurant aging summary:", error);
+		throw error;
+	}
+}

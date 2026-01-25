@@ -1,16 +1,28 @@
-// PaymentTab.jsx - Payment and banking information
-// Shows payment terms, tax ID (masked), banking info (masked)
+// PaymentTab.jsx - Payment and banking information with Accounts Payable
+// Shows payment terms, tax ID (masked), banking info (masked), and AP management
 
-import { CreditCard, DollarSign, Building, Eye, EyeOff, Edit, Loader2 } from "lucide-react";
+import { CreditCard, DollarSign, Building, Eye, EyeOff, Edit, Loader2, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useVendorPaymentInfo } from "../../../hooks/useVendorPayment";
+import { useVendorBalance } from "../../../hooks/useVendorInvoices";
+import { useVendorInvoices } from "../../../hooks/useVendorInvoices";
 import PaymentInfoForm from "../forms/PaymentInfoForm";
+import AgingSummaryCard from "../components/AgingSummaryCard";
+import InvoiceQuickEntry from "../components/InvoiceQuickEntry";
+import PaymentQuickEntry from "../components/PaymentQuickEntry";
+import OutstandingInvoicesSummary from "../components/OutstandingInvoicesSummary";
 
-export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) {
+export default function PaymentTab({ vendorId, initialPaymentInfo, purchaseOrders = [], onRefetch }) {
   // Use initialPaymentInfo if provided, otherwise fall back to API call
   const { data: fetchedPaymentInfo, isLoading: isFetching, error, refetch: apiRefetch } = useVendorPaymentInfo(vendorId, {
     enabled: !initialPaymentInfo // Only fetch if no initial data provided
   });
+
+  // Fetch vendor balance for AP section
+  const { data: balanceData, isLoading: isBalanceLoading } = useVendorBalance(vendorId);
+
+  // Fetch invoices for the payment dropdown
+  const { data: invoicesData } = useVendorInvoices(vendorId, { status: 'outstanding' });
 
   // Local state to track payment info (use initial data if available)
   const [paymentInfo, setPaymentInfo] = useState(initialPaymentInfo || null);
@@ -56,6 +68,9 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
     refetch(); // Refresh payment info after successful save
   };
 
+  // Get open invoices for the payment dropdown
+  const openInvoices = invoicesData || [];
+
   // Loading state
   if (isLoading) {
     return (
@@ -87,20 +102,32 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
   if (!paymentInfo) {
     return (
       <>
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
-          <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-gray-900 mb-1">
-            No payment information
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Add payment and banking details for this vendor
-          </p>
-          <button
-            onClick={handleEdit}
-            className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 text-sm rounded"
-          >
-            Add Payment Info
-          </button>
+        <div className="space-y-6">
+          {/* Empty payment info state */}
+          <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+            <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-gray-900 mb-1">
+              No payment information
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Add payment and banking details for this vendor
+            </p>
+            <button
+              onClick={handleEdit}
+              className="bg-green-600 text-white hover:bg-green-700 px-4 py-2 text-sm rounded"
+            >
+              Add Payment Info
+            </button>
+          </div>
+
+          {/* Accounts Payable Section - Show even without payment info */}
+          <AccountsPayableSection
+            vendorId={vendorId}
+            balanceData={balanceData}
+            isBalanceLoading={isBalanceLoading}
+            openInvoices={openInvoices}
+            purchaseOrders={purchaseOrders}
+          />
         </div>
 
         {/* Payment Info Form Modal */}
@@ -117,7 +144,14 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Current Balance Banner */}
+      <CurrentBalanceBanner
+        balanceData={balanceData}
+        isLoading={isBalanceLoading}
+        creditLimit={paymentInfo.credit_limit}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -155,9 +189,9 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
           />
           <InfoItem
             label="Current Balance"
-            value={formatCurrency(paymentInfo.current_balance)}
+            value={formatCurrency(balanceData?.total_outstanding || paymentInfo.current_balance || 0)}
             valueColor={
-              paymentInfo.current_balance > paymentInfo.credit_limit * 0.8
+              (balanceData?.total_outstanding || paymentInfo.current_balance || 0) > paymentInfo.credit_limit * 0.8
                 ? "text-red-600"
                 : "text-green-600"
             }
@@ -242,12 +276,14 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
           <InfoItem
             label="Remittance Email"
             value={
-              <a
-                href={`mailto:${paymentInfo.remittance_email}`}
-                className="text-green-600 hover:underline"
-              >
-                {paymentInfo.remittance_email}
-              </a>
+              paymentInfo.remittance_email ? (
+                <a
+                  href={`mailto:${paymentInfo.remittance_email}`}
+                  className="text-green-600 hover:underline"
+                >
+                  {paymentInfo.remittance_email}
+                </a>
+              ) : null
             }
           />
         </div>
@@ -262,6 +298,15 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
           <p className="text-sm text-blue-800">{paymentInfo.notes}</p>
         </div>
       )}
+
+      {/* Accounts Payable Section */}
+      <AccountsPayableSection
+        vendorId={vendorId}
+        balanceData={balanceData}
+        isBalanceLoading={isBalanceLoading}
+        openInvoices={openInvoices}
+        purchaseOrders={purchaseOrders}
+      />
 
       {/* Security Notice */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -288,19 +333,118 @@ export default function PaymentTab({ vendorId, initialPaymentInfo, onRefetch }) 
   );
 }
 
+// Current Balance Banner Component
+function CurrentBalanceBanner({ balanceData, isLoading, creditLimit }) {
+  if (isLoading) {
+    return (
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
+          <span className="text-sm text-gray-600">Loading balance...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const totalOutstanding = balanceData?.total_outstanding || 0;
+  const totalOverdue = balanceData?.total_overdue || 0;
+  const invoiceCount = balanceData?.invoice_count || 0;
+
+  // Determine status color based on credit limit and overdue
+  let statusColor = "text-green-600";
+  let statusBg = "bg-green-50";
+  let statusBorder = "border-green-200";
+
+  if (totalOverdue > 0) {
+    statusColor = "text-red-600";
+    statusBg = "bg-red-50";
+    statusBorder = "border-red-200";
+  } else if (creditLimit && totalOutstanding > creditLimit * 0.8) {
+    statusColor = "text-orange-600";
+    statusBg = "bg-orange-50";
+    statusBorder = "border-orange-200";
+  }
+
+  return (
+    <div className={`${statusBg} border ${statusBorder} rounded-lg p-4`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-full ${statusBg}`}>
+            <Wallet className={`w-6 h-6 ${statusColor}`} />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-600">Current Balance</p>
+            <p className={`text-2xl font-bold ${statusColor}`}>
+              {formatCurrency(totalOutstanding)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-6">
+          <div className="text-center">
+            <p className="text-xs font-medium text-gray-600">Open Invoices</p>
+            <p className="text-lg font-semibold text-gray-900">{invoiceCount}</p>
+          </div>
+          {totalOverdue > 0 && (
+            <div className="text-center">
+              <p className="text-xs font-medium text-gray-600">Overdue</p>
+              <p className="text-lg font-semibold text-red-600">{formatCurrency(totalOverdue)}</p>
+            </div>
+          )}
+          {creditLimit > 0 && (
+            <div className="text-center">
+              <p className="text-xs font-medium text-gray-600">Credit Available</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {formatCurrency(Math.max(0, creditLimit - totalOutstanding))}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Accounts Payable Section Component
+function AccountsPayableSection({ vendorId, balanceData, isBalanceLoading, openInvoices, purchaseOrders }) {
+  return (
+    <div className="space-y-4">
+      {/* Section Header */}
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <Wallet className="w-5 h-5 text-gray-600" />
+          Accounts Payable
+        </h3>
+      </div>
+
+      {/* Aging Summary Card */}
+      <AgingSummaryCard vendorId={vendorId} />
+
+      {/* Quick Entry Forms Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <InvoiceQuickEntry vendorId={vendorId} purchaseOrders={purchaseOrders} />
+        <PaymentQuickEntry vendorId={vendorId} openInvoices={openInvoices} />
+      </div>
+
+      {/* Outstanding Invoices Table */}
+      <OutstandingInvoicesSummary vendorId={vendorId} />
+    </div>
+  );
+}
+
 // Helper component for information items
 function InfoItem({ label, value, valueColor = "text-gray-900" }) {
   return (
     <div>
       <dt className="text-xs font-medium text-gray-600 mb-1">{label}</dt>
-      <dd className={`text-sm ${valueColor}`}>{value || "—"}</dd>
+      <dd className={`text-sm ${valueColor}`}>{value || "-"}</dd>
     </div>
   );
 }
 
 // Utility functions for masking
 function maskTaxId(taxId) {
-  if (!taxId) return "—";
+  if (!taxId) return "-";
   // Show only last 4 digits: 12-3456789 -> XX-XXXX789
   const cleanId = taxId.replace(/[^0-9]/g, "");
   const last4 = cleanId.slice(-4);
@@ -308,7 +452,7 @@ function maskTaxId(taxId) {
 }
 
 function maskAccountNumber(accountNumber) {
-  if (!accountNumber) return "—";
+  if (!accountNumber) return "-";
   // Show only last 4 digits: 1234567890123456 -> ************3456
   const last4 = accountNumber.slice(-4);
   return `${"*".repeat(accountNumber.length - 4)}${last4}`;
@@ -316,6 +460,7 @@ function maskAccountNumber(accountNumber) {
 
 // Utility function to format currency
 function formatCurrency(value) {
+  if (value === null || value === undefined) return "$0.00";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",

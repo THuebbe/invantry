@@ -25,6 +25,8 @@ import vendorContactsRoutes from "./routes/vendorContacts.js";
 import vendorPaymentRoutes from "./routes/vendorPayment.js";
 import vendorDocumentsRoutes from "./routes/vendorDocuments.js";
 import vendorScorecardsRoutes from "./routes/vendorScorecards.js";
+import vendorInvoicesRoutes from "./routes/vendorInvoices.js";
+import vendorPaymentsAPRoutes from "./routes/vendorPaymentsAP.js";
 // Load environment variables
 
 // Initialize Express app
@@ -72,6 +74,8 @@ app.use("/api/vendors", vendorContactsRoutes);
 app.use("/api/vendors", vendorPaymentRoutes);
 app.use("/api/vendors", vendorDocumentsRoutes);
 app.use("/api/vendors", vendorScorecardsRoutes);
+app.use("/api/vendors", vendorInvoicesRoutes);
+app.use("/api/vendors", vendorPaymentsAPRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

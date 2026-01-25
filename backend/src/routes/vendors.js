@@ -17,6 +17,11 @@ import {
 	getVendorSummary,
 	getVendorMetrics,
 } from "../services/vendors.js";
+import {
+	calculateVendorBalance,
+	getVendorAgingReport,
+	getRestaurantAgingSummary,
+} from "../services/vendorPayment.js";
 
 const router = express.Router();
 
@@ -135,6 +140,52 @@ router.get("/:id/summary", async (req, res) => {
 		res.json(summary);
 	} catch (error) {
 		console.error("Error fetching vendor summary:", error);
+
+		if (error.message === "Vendor not found") {
+			return res.status(404).json({ error: error.message });
+		}
+
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * GET /api/vendors/:vendorId/balance
+ * Get current balance (sum of unpaid invoice balances) for a vendor
+ * IMPORTANT: This must come BEFORE /:id route to avoid Express matching incorrectly
+ */
+router.get("/:vendorId/balance", async (req, res) => {
+	try {
+		const { vendorId } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		const balance = await calculateVendorBalance(vendorId, restaurantId);
+		res.json(balance);
+	} catch (error) {
+		console.error("Error fetching vendor balance:", error);
+
+		if (error.message === "Vendor not found") {
+			return res.status(404).json({ error: error.message });
+		}
+
+		res.status(500).json({ error: error.message });
+	}
+});
+
+/**
+ * GET /api/vendors/:vendorId/aging
+ * Get aging report (breakdown of outstanding balances by age) for a vendor
+ * IMPORTANT: This must come BEFORE /:id route to avoid Express matching incorrectly
+ */
+router.get("/:vendorId/aging", async (req, res) => {
+	try {
+		const { vendorId } = req.params;
+		const restaurantId = await getRestaurantId(req.businessId);
+
+		const agingReport = await getVendorAgingReport(vendorId, restaurantId);
+		res.json(agingReport);
+	} catch (error) {
+		console.error("Error fetching vendor aging report:", error);
 
 		if (error.message === "Vendor not found") {
 			return res.status(404).json({ error: error.message });
