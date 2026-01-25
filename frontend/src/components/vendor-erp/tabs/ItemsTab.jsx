@@ -4,6 +4,7 @@
 import { Package, Plus, Star, Clock, Search, Edit2, X, Check, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useUpdateVendorItem } from "../../../hooks/useVendorItems";
+import ItemForm from "../forms/ItemForm";
 
 export default function ItemsTab({ vendorId, vendor }) {
   const { mutate: updateVendorItem, isPending: isSaving } = useUpdateVendorItem();
@@ -30,6 +31,7 @@ export default function ItemsTab({ vendorId, vendor }) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPreferred, setFilterPreferred] = useState("all"); // all, preferred, non-preferred
+  const [showAddItemForm, setShowAddItemForm] = useState(false);
 
   // Inline editing state
   const [editingItemId, setEditingItemId] = useState(null);
@@ -39,9 +41,13 @@ export default function ItemsTab({ vendorId, vendor }) {
 
   const items = rawItems;
 
+  // Get list of ingredient IDs already mapped to this vendor (for filtering in ItemForm)
+  const existingIngredientIds = useMemo(() => {
+    return items.map(item => item.ingredient_id);
+  }, [items]);
+
   const handleAddItem = () => {
-    console.log("Add item clicked for vendor:", vendorId);
-    alert("Add item functionality will be implemented in Phase 2");
+    setShowAddItemForm(true);
   };
 
   // Inline editing handlers
@@ -469,6 +475,16 @@ export default function ItemsTab({ vendorId, vendor }) {
           </li>
         </ul>
       </div>
+
+      {/* Add Item Modal */}
+      {showAddItemForm && (
+        <ItemForm
+          vendorId={vendorId}
+          existingIngredientIds={existingIngredientIds}
+          onClose={() => setShowAddItemForm(false)}
+          onSuccess={() => setShowAddItemForm(false)}
+        />
+      )}
     </div>
   );
 }
