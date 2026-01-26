@@ -65,7 +65,9 @@ export async function registerUser(email, password, metadata) {
 			user: sessionData.user,
 			session: sessionData.session,
 			userDetails: userDetails,
-			accessToken: sessionData.session.access_token, // 👈 THIS IS THE KEY!
+			accessToken: sessionData.session.access_token,
+			refreshToken: sessionData.session.refresh_token,
+			expiresAt: sessionData.session.expires_at,
 			message: "User successfully registered",
 		};
 	} catch (error) {
@@ -99,6 +101,46 @@ export async function loginUser(email, password) {
 			session: data.session,
 			userDetails: userData,
 			accessToken: data.session.access_token,
+			refreshToken: data.session.refresh_token,
+			expiresAt: data.session.expires_at,
+		};
+	} catch (error) {
+		throw error;
+	}
+}
+
+export async function refreshSession(refreshToken) {
+	try {
+		if (!refreshToken) {
+			throw new Error("No refresh token provided");
+		}
+
+		const { data, error } = await supabase.auth.refreshSession({
+			refresh_token: refreshToken,
+		});
+
+		if (error) {
+			throw new Error(`Token refresh failed: ${error.message}`);
+		}
+
+		// Get user details from users table
+		const { data: userData, error: userError } = await supabase
+			.from("users")
+			.select("*")
+			.eq("id", data.user.id)
+			.single();
+
+		if (userError) {
+			console.warn("Could not fetch user details:", userError);
+		}
+
+		return {
+			user: data.user,
+			session: data.session,
+			userDetails: userData,
+			accessToken: data.session.access_token,
+			refreshToken: data.session.refresh_token,
+			expiresAt: data.session.expires_at,
 		};
 	} catch (error) {
 		throw error;
