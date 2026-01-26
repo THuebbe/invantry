@@ -1,8 +1,8 @@
 # Project Checklist - Restaurant Inventory Management System
 
-**Last Updated:** November 7, 2025
-**Overall Status:** 50-55% Complete
-**Total Tasks:** ~160 | **Completed:** ~85 (53%) | **Remaining:** ~75 (47%)
+**Last Updated:** January 24, 2026
+**Overall Status:** 65% Complete
+**Total Tasks:** ~180 | **Completed:** ~115 (64%) | **Remaining:** ~65 (36%)
 
 ---
 
@@ -41,61 +41,45 @@
 - [x] Remove/waste inventory endpoint
 - [x] Receive inventory endpoint
 - [x] Frontend inventory display
-- [x] **UI FIX:** Fix expiration display logic:
-  - [x] Change "Expires in 0 days" to "Expired!" when expiration_date <= today
-  - [x] Show negative days for overdue items (e.g., "Expired! (5 days ago)")
-  - [x] Include expired items in "Expiring Soon" section (currently only shows future dates)
+- [x] **UI FIX:** Fix expiration display logic (completed)
 
-### Receiving Workflow (Currently "Coming Soon")
+### Receiving Workflow
 
 - [x] Receive inventory endpoint (backend)
 - [x] Add items to inventory via purchase orders (backend)
 - [x] Purchase order management endpoints (backend)
-- [ ] **NEW SECTION:** Build main Receiving content area
+- [ ] **FRONTEND:** Build main Receiving content area
   - [ ] Display receiving overview/status
   - [ ] Create navigation to subsections
 - [ ] **Receive Shipment Subsection:**
-  - [ ] Build form to receive new shipments
+  - [ ] Build form to receive new shipments against POs
   - [ ] Show receiving input fields (item, quantity, date received, etc.)
-  - [ ] Connect to backend receive inventory endpoint
+  - [ ] Handle partial receives
+  - [ ] Track discrepancies (short ships, damages)
+  - [ ] Auto-update inventory on receive
   - [ ] Show confirmation after successful receive
 - [ ] **Receiving History Subsection:**
   - [ ] Display list of past receiving transactions
   - [ ] Show date, items received, quantities, supplier info
   - [ ] Add filtering/sorting options
-  - [ ] Connect to backend inventory history endpoint
 
-### Orders Workflow (Currently "Coming Soon")
+### Orders Workflow
 
 - [x] Purchase order management endpoints (backend)
 - [x] Purchase order creation endpoint (backend)
 - [x] Purchase order listing endpoint (backend)
-- [ ] **NEW SECTION:** Build main Orders content area
-  - [ ] Display orders overview/dashboard
-  - [ ] Show orders summary/statistics
-  - [ ] Create navigation to subsections
-- [ ] **All Orders Subsection:**
-  - [ ] Display comprehensive list of all orders
-  - [ ] Show order details: ID, date, supplier, total, status
-  - [ ] Add filtering by status, date range, supplier
-  - [ ] Add sorting options
-  - [ ] Connect to backend get all orders endpoint
-- [ ] **Create Order Subsection:**
-  - [ ] Build order creation form
-  - [ ] Allow selection of items and quantities
-  - [ ] Show supplier options
-  - [ ] Add item search/lookup functionality
-  - [ ] Calculate order totals
-  - [ ] Connect to backend create order endpoint
-  - [ ] Show confirmation after successful creation
-- [ ] **Pending Orders Subsection:**
-  - [ ] Display list of orders with pending status
-  - [ ] Show relevant order details
-  - [ ] Allow marking orders as received
-  - [ ] Show expected delivery dates
-  - [ ] Connect to backend pending orders endpoint
+- [x] Orders page component
+- [x] Orders split-view interface
+- [x] Multi-vendor PO generation
+- [x] Order-to-PO linking
+- [x] Draft/submitted status workflow
+- [x] Save to draft functionality
+- [x] Order editing
+- [x] Duplicate order prevention
+- [ ] Order templates/favorites
+- [ ] Scheduled/recurring orders
 
-### Reports Section (Currently "Coming Soon")
+### Reports Section
 
 - [x] Reports page component
 - [x] Reports endpoint (backend)
@@ -106,30 +90,23 @@
   - [ ] Show waste summary
   - [ ] Create visual charts/graphs
 - [ ] **Waste Analysis:**
-  - [ ] **INVESTIGATE:** Backend waste reporting endpoints (marked as "waiting for endpoints" - verify if these exist)
   - [ ] Build waste trends visualization
   - [ ] Show waste by category
   - [ ] Show waste cost analysis
   - [ ] Display waste over time (daily, weekly, monthly)
-  - [ ] Connect to backend waste data
 - [ ] **Food Cost Analysis:**
   - [ ] Display food cost metrics
   - [ ] Show cost trends over time
   - [ ] Analyze cost by ingredient/category
   - [ ] Compare against benchmarks
-  - [ ] Create visual charts
 - [ ] **Inventory Health:**
   - [ ] Show inventory turnover metrics
   - [ ] Display obsolescence indicators
   - [ ] Show stock level distribution
-  - [ ] Highlight items with issues (overstocked, understocked)
-  - [ ] Create visual metrics
 - [ ] **Order Performance:**
   - [ ] Show on-time delivery metrics
   - [ ] Display order accuracy
   - [ ] Analyze supplier performance
-  - [ ] Show lead time trends
-  - [ ] Create performance scorecards
 
 ### Frontend UI & Responsive Design
 
@@ -143,13 +120,7 @@
 - [x] Tailwind CSS styling
 - [ ] **Navbar Header Features:**
   - [ ] Build Notifications icon/dropdown
-    - [ ] Show notification list
-    - [ ] Mark notifications as read
-    - [ ] Clear notifications
   - [ ] Build Settings icon/dropdown
-    - [ ] User profile settings
-    - [ ] Application preferences
-    - [ ] Logout option
 
 ### Database & Backend Infrastructure
 
@@ -172,13 +143,127 @@
 
 ### State Management & Data Fetching
 
-- [x] TanStack Query setup in package.json
+- [x] TanStack Query setup
 - [x] Axios for API calls
 - [x] Context API for auth state
+- [x] React Query hooks for data fetching
 
 ---
 
-## ADDITIONAL FEATURES (BEYOND MVP)
+## VENDOR ERP MODULE (NEW - Jan 2026)
+
+### Vendor Management
+
+- [x] Vendors table with multi-tenant enforcement
+- [x] Vendor CRUD operations
+- [x] Vendor codes (unique per restaurant)
+- [x] Vendor listing with filters
+- [x] Vendor detail page with tabs
+- [x] Vendor metrics dashboard
+
+### Vendor Addresses
+
+- [x] vendor_addresses table
+- [x] Multiple addresses per vendor
+- [x] Address types (billing, remittance, ship_from, warehouse, primary, other)
+- [x] Primary address management
+- [x] Full CRUD operations
+
+### Vendor Contacts
+
+- [x] vendor_contacts table
+- [x] Multiple contacts per vendor
+- [x] Contact roles (sales_rep, account_manager, support, owner, etc.)
+- [x] Primary contact management
+- [x] Order/invoice notification flags
+- [x] Full CRUD operations
+
+### Vendor Payment Info
+
+- [x] vendor_payment_info table
+- [x] Banking information (masked for security)
+- [x] Tax ID storage
+- [x] Credit limit tracking
+- [x] Payment terms linkage
+- [x] Preferred payment method
+
+### Vendor Purchasing Data
+
+- [x] vendor_purchasing_data table
+- [x] Lead time defaults
+- [x] Order minimums/maximums
+- [x] Freight terms
+- [x] Delivery days configuration
+- [x] Backorder/drop-ship flags
+
+### Vendor Items (Ingredient-Vendor Mapping)
+
+- [x] ingredient_vendor_mapping with restaurant_id
+- [x] Vendor item number / SKU
+- [x] Unit cost tracking
+- [x] Lead time per item
+- [x] Minimum order quantity
+- [x] Pack size and pack UOM
+- [x] Vendor barcode/UPC
+- [x] Vendor item description
+- [x] Preferred vendor flag
+- [x] Add Item modal with ingredient search
+- [x] Reusable ModalForm component
+
+### Vendor Documents
+
+- [x] vendor_documents table
+- [x] Document types (W9, COI, contract, license, etc.)
+- [x] Expiration tracking
+- [x] File upload/download
+- [x] Document CRUD operations
+
+### Vendor Scorecards
+
+- [x] vendor_scorecards table
+- [x] Performance metrics structure
+- [x] Rating calculations
+
+### Accounts Payable System (Sprint 3)
+
+- [x] vendor_invoices table
+- [x] Invoice CRUD operations
+- [x] Invoice status tracking (pending, partial, paid, overdue, disputed, cancelled)
+- [x] Due date management
+- [x] vendor_payments table
+- [x] Payment recording
+- [x] Payment void functionality
+- [x] Auto-apply payments to oldest invoice
+- [x] Payment method tracking (ACH, Wire, Check, Credit Card, etc.)
+- [x] Database trigger for invoice status updates
+- [x] Current balance calculation endpoint
+- [x] Aging report (Current, 1-30, 31-60, 61-90, 90+ days)
+- [x] Invoice Quick Entry component
+- [x] Payment Quick Entry component
+- [x] Outstanding Invoices Summary
+- [x] Aging Summary Card
+
+### Vendor Features - Remaining
+
+- [ ] **Price History Tracking**
+  - [ ] vendor_price_history table
+  - [ ] Auto-log on price changes
+  - [ ] Price trend charts
+  - [ ] Price change alerts
+- [ ] **Bulk Import/Export**
+  - [ ] CSV import for vendor items
+  - [ ] CSV export of vendor catalog
+  - [ ] Bulk price updates
+  - [ ] Validation and error reporting
+- [ ] **Vendor Analytics**
+  - [ ] On-time delivery tracking
+  - [ ] Order accuracy metrics
+  - [ ] Vendor comparison dashboards
+  - [ ] Performance trends
+
+---
+
+## ADDITIONAL FEATURES
 
 ### Waste Tracking
 
@@ -187,7 +272,6 @@
 - [x] Remove stock form component
 - [x] Waste content display section
 - [x] Waste log table in database
-- [ ] Investigate backend waste reporting endpoints for Reports section
 
 ### Menu Items & Recipes
 
@@ -197,37 +281,35 @@
 - [x] Add/edit menu items functionality
 - [x] Menu items database tables
 - [x] Recipe ingredients table
-- [ ] Add role-based middleware for menu items routes (manager/admin only)
-
-### Purchase Orders & Ordering
-
-- [x] Purchase order creation endpoint
-- [x] Purchase order listing endpoint
-- [x] Purchase order management
-- [x] Order items tracking
-- [x] Orders page component (backend data exists)
-- [x] Orders content display
-- [ ] Implement receiving and order management UI (listed above in Orders Workflow)
+- [ ] Add role-based middleware for menu items routes
 
 ### POS System Integration
 
+- [x] POS adapter architecture
 - [x] POS adapter for Toast
 - [x] POS adapter for Square
 - [x] POS adapter for Clover
 - [x] POS import routes
-- [ ] Add role-based middleware for POS import routes (manager/admin only)
-- [ ] Test end-to-end POS integration
-- [ ] Toast menu import service
+- [ ] **END-TO-END INTEGRATION:**
+  - [ ] Toast API connection setup
+  - [ ] Square API connection setup
+  - [ ] Clover API connection setup
+  - [ ] Sales webhook handlers
+  - [ ] Ingredient deduction logic (recipe -> inventory)
+  - [ ] UI for POS connection setup
+  - [ ] Sync status dashboard
+  - [ ] Scheduled sync jobs
+- [ ] Add role-based middleware for POS import routes
 
 ### Advanced Metrics & Analytics
 
 - [x] Metrics service with multiple calculations
 - [x] Low stock count calculation
 - [x] Expiring items calculation
-- [ ] Sales data calculations (marked TODO - placeholder)
-- [ ] Usage data tracking (marked TODO - placeholder)
-- [ ] COGS/Inventory turnover calculation (marked TODO - placeholder)
-- [ ] Implement quality tracking feature (Phase 2)
+- [ ] Sales data calculations
+- [ ] Usage data tracking
+- [ ] COGS/Inventory turnover calculation
+- [ ] Quality tracking feature (Phase 2)
 
 ---
 
@@ -236,23 +318,22 @@
 - [x] JWT authentication middleware
 - [x] Protected API endpoints
 - [x] Protected frontend routes
-- [ ] Role-based access control middleware for menu items routes
-- [ ] Role-based access control middleware for POS import routes
-- [ ] Role-based access control middleware for recipe routes
-- [ ] Role-based access control for general admin functions
+- [x] Multi-tenant data isolation (restaurant_id)
+- [x] Banking data masking
+- [ ] Role-based access control (RBAC)
 - [ ] Input validation on all endpoints
-- [ ] SQL injection prevention (verify Supabase usage)
-- [ ] XSS prevention in React components
+- [ ] API rate limiting
 
 ---
 
-## PHASE 2 FEATURES (Not in MVP)
+## PHASE 2 FEATURES (Future)
 
 - [ ] Camera-based barcode scanning
 - [ ] Quality tracking feature
 - [ ] Advanced analytics dashboard
 - [ ] Inventory forecasting
 - [ ] Multi-location support
+- [ ] Approval workflows for payments
 
 ---
 
@@ -262,110 +343,73 @@
 - [ ] Integration tests for API endpoints
 - [ ] E2E tests for complete workflows
 - [ ] Frontend component tests
-- [ ] Manual testing of all auth flows
-- [ ] Manual testing of all CRUD operations
-- [ ] Manual testing of Receiving workflow
-- [ ] Manual testing of Orders workflow
-- [ ] Manual testing of Reports section
-- [ ] Performance testing
-- [ ] Security testing (OWASP top 10)
 - [ ] Production deployment setup
 - [ ] Environment configuration for staging/production
 - [ ] Database backup strategy
-- [ ] API rate limiting
 
 ---
 
 ## DOCUMENTATION
 
-- [x] Frontend technical specification (exists)
-- [x] Backend technical specification (exists)
-- [x] Database schema documentation (exists)
+- [x] Frontend technical specification
+- [x] Backend technical specification
+- [x] Database schema documentation
+- [x] Sprint planning documents
 - [ ] API documentation/Swagger
 - [ ] Deployment guide
-- [ ] Contributing guidelines
 - [ ] User manual
-
----
-
-## CODE QUALITY & REFACTORING
-
-- [ ] Verify frontend components are wired to all backend endpoints
-- [ ] Complete POS integration testing
-- [ ] Code cleanup and optimization
-- [ ] Remove hardcoded values (food cost %)
-- [ ] Implement actual food cost calculation from inventory data
-- [ ] Investigate waste reporting endpoints and ensure Reports section can access them
 
 ---
 
 ## PRIORITY ROADMAP
 
-### High Priority (Critical Path - Do First)
+### High Priority (Do Next)
 
-1. **QUICK WIN:** Fix inventory expiration display (5-30 mins)
+1. **Receiving Module** (8-12 hours)
+   - Complete the PO lifecycle (order -> receive -> inventory)
+   - Build receiving UI against POs
+   - Auto-update inventory quantities
 
-   - Expiration date logic fix
-   - Update "Expiring Soon" to include expired items
-
-2. **MAJOR FEATURE:** Build Receiving Section (4-6 hours)
-
-   - Main receiving overview
-   - Receive Shipment form
-   - Receiving History display
-
-3. **MAJOR FEATURE:** Build Orders Section (4-6 hours)
-
-   - Main orders overview
-   - All Orders subsection
-   - Create Order subsection
-   - Pending Orders subsection
-
-4. **MEDIUM FEATURE:** Build Reports Section (6-8 hours)
-   - Dashboard Overview Report
-   - Waste Analysis (investigate backend first)
-   - Food Cost Analysis
-   - Inventory Health
-   - Order Performance
+2. **POS Integration** (15-20 hours)
+   - Connect to Toast/Square/Clover
+   - Deduct ingredients from inventory based on sales
+   - Real-time or scheduled syncing
 
 ### Medium Priority
 
-5. **FEATURE:** Build Navbar Features (2-3 hours)
+3. **Price History Tracking** (6-8 hours)
+   - Track vendor item price changes
+   - Show price trends
+   - Alert on significant increases
 
+4. **Vendor Analytics** (10-15 hours)
+   - On-time delivery tracking
+   - Order accuracy metrics
+   - Performance dashboards
+
+5. **Bulk Import/Export** (6-8 hours)
+   - CSV import for vendor items
+   - Template downloads
+   - Validation and error reporting
+
+6. **Reports Module** (12-16 hours)
+   - Dashboard Overview Report
+   - Waste Analysis
+   - Food Cost Analysis
+   - Inventory Health
+
+### Lower Priority
+
+7. **Navbar Features** (2-3 hours)
    - Notifications dropdown
    - Settings dropdown
 
-6. **BUG FIX:** Implement actual food cost % calculation (2-3 hours)
+8. **Real Food Cost Calculation** (2-3 hours)
+   - Replace hardcoded 28.5%
 
-   - Replace hardcoded 28.5% with real data calculation
-
-7. **SECURITY:** Add Role-Based Access Control (2-3 hours)
-   - 4 routes need RBAC middleware
-
-### Low Priority (Polish & Phase 2)
-
-8. Implement advanced metrics calculations
-9. Camera-based barcode scanning
-10. Quality tracking feature
-11. Complete testing suite
-12. Performance optimization
-
----
-
-## BACKEND TODOS FOUND IN CODE
-
-| File                      | Line | TODO Item                                               | Status                                |
-| ------------------------- | ---- | ------------------------------------------------------- | ------------------------------------- |
-| routes/dashboard.js       | 53   | Calculate food cost from actual data                    | Not implemented - hardcoded to 28.5%  |
-| routes/menuItemRoutes.js  | 20   | Add role-based middleware for manager/admin only routes | Not implemented                       |
-| services/metrics.js       | 56   | Calculate from actual sales data                        | Placeholder for future implementation |
-| services/metrics.js       | 114  | Track actual usage data                                 | Placeholder for future implementation |
-| services/metrics.js       | 148  | Calculate from actual usage data (COGS/Avg Inventory)   | Placeholder for future implementation |
-| services/metrics.js       | 301  | Implement quality tracking feature                      | Planned for Phase 2                   |
-| routes/posImportRoutes.js | 18   | Add role-based middleware for manager/admin only        | Not implemented                       |
-| routes/recipeRoutes.js    | 23   | Add role-based middleware for manager/admin only routes | Not implemented                       |
-
-**Note:** No frontend TODOs found. All backend TODOs are for enhancements, not blocking issues.
+9. **Role-Based Access Control** (4-6 hours)
+   - User roles (admin, manager, staff)
+   - Route protection by role
 
 ---
 
@@ -373,29 +417,24 @@
 
 | Section                | Status  | Notes                                                   |
 | ---------------------- | ------- | ------------------------------------------------------- |
-| Authentication         | 90%     | Complete, just missing email verification & 2FA         |
+| Authentication         | 90%     | Complete, missing email verification & 2FA              |
 | Dashboard              | 80%     | Metrics display works, food cost needs real calculation |
-| Inventory              | 85%     | Full CRUD works, expiration display needs fix           |
-| **Receiving**          | **10%** | **Backend 100%, Frontend 0% - Needs UI build**          |
-| **Orders**             | **10%** | **Backend 100%, Frontend 0% - Needs UI build**          |
-| **Reports**            | **20%** | **Main page exists, all subsections need build**        |
-| Waste Tracking         | 90%     | Complete, just need reports integration                 |
-| Menu Items             | 90%     | Complete, just needs RBAC                               |
+| Inventory              | 90%     | Full CRUD works, well integrated                        |
+| **Receiving**          | **20%** | **Backend done, Frontend needs building**               |
+| **Orders**             | **80%** | **Split-view complete, multi-vendor POs working**       |
+| **Reports**            | **20%** | **Main page exists, subsections need build**            |
+| Waste Tracking         | 90%     | Complete, needs reports integration                     |
+| Menu Items             | 90%     | Complete, needs RBAC                                    |
+| **Vendor ERP**         | **95%** | **Full module complete including AP system**            |
+| POS Integration        | 30%     | Adapters exist, end-to-end flow needed                  |
 | Database               | 100%    | All tables created with relationships                   |
 | Backend Infrastructure | 95%     | Routes, middleware, error handling in place             |
 
 ---
 
-## QUICK REFERENCE
+## KEY API ENDPOINTS
 
-**Files to Reference for Development:**
-
-- Frontend Technical Specification: `Frontend Technical Specification - Restaurant Inventory System.md`
-- Backend Technical Specification: `Restaurant Inventory MVP - Technical Specification for AI Agent.md`
-- Database Schema: `Supabase Table and Data Structure.md`
-
-**Key Endpoints Ready to Use:**
-
+### Core
 - POST `/api/auth/login` - User login
 - POST `/api/auth/register` - User registration
 - GET `/api/inventory` - Get inventory list
@@ -404,19 +443,27 @@
 - POST `/api/inventory/remove` - Waste tracking
 - GET `/api/orders` - Get purchase orders
 - POST `/api/orders` - Create purchase order
-- GET `/api/reports` - Get reports data
+
+### Vendor ERP
+- GET `/api/vendors` - List vendors
+- GET `/api/vendors/:id/summary` - Vendor with all related data
+- GET `/api/vendors/:id/balance` - Current AP balance
+- GET `/api/vendors/:id/aging` - Aging report
+- POST `/api/vendors/:vendorId/invoices` - Create invoice
+- POST `/api/vendors/:vendorId/payments` - Record payment
+- POST `/api/vendors/:vendorId/ingredients/:ingredientId` - Add vendor item
 
 ---
 
 ## NOTES
 
-- **Git Commits:** Latest shows "Added Menu Items section" - active development
-- **Phase Status:** Phase 1 marked complete, but UI sections still need building
-- **Backend Status:** Very solid, almost all endpoints implemented
-- **Frontend Status:** Core auth/dashboard/inventory done, Receiving/Orders/Reports sections need UI work
-- **Data:** Using fake data for development - expiration dates include 0 and negative values
+- **Vendor ERP:** Phase 1-3 complete (Jan 2026), comprehensive module
+- **Orders:** Split-view interface complete, multi-vendor POs working
+- **AP System:** Full invoicing and payment tracking operational
+- **POS:** Adapters exist but need end-to-end integration and testing
+- **Next Focus:** Receiving module to complete order-to-inventory flow
 
 ---
 
-**Updated:** November 7, 2025
-**Next Review:** After Receiving and Orders sections are built
+**Updated:** January 24, 2026
+**Next Review:** After Receiving module and POS integration

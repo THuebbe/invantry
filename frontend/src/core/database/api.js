@@ -1,4 +1,4 @@
-// /frontend/src/core/databse/api.js
+// /frontend/src/core/database/api.js
 
 import axios from "axios";
 
@@ -11,6 +11,21 @@ const api = axios.create({
 	},
 });
 
+// Track if we're currently refreshing to prevent infinite loops
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+	failedQueue.forEach((prom) => {
+		if (error) {
+			prom.reject(error);
+		} else {
+			prom.resolve(token);
+		}
+	});
+	failedQueue = [];
+};
+
 // Request interceptor - add token to all requests
 api.interceptors.request.use(
 	(config) => {
@@ -19,11 +34,9 @@ api.interceptors.request.use(
 			config.headers.Authorization = `Bearer ${token}`;
 		}
 
-		// If uploading FormData, explicitly set Content-Type to multipart/form-data
-		// This lets axios handle the boundary parameter automatically
+		// If uploading FormData, let axios handle Content-Type
 		if (config.data instanceof FormData) {
-			// Setting to undefined tells axios to auto-detect and set the correct Content-Type with boundary
-			config.headers['Content-Type'] = undefined;
+			config.headers["Content-Type"] = undefined;
 		}
 
 		return config;
@@ -33,39 +46,80 @@ api.interceptors.request.use(
 	}
 );
 
-// Response interceptor - handle 401 errors
+// Response interceptor - handle 401 errors with refresh attempt
 api.interceptors.response.use(
 	(response) => response,
-	(error) => {
-		if (error.response?.status === 401) {
-			// Toen expired or invalid - clear storage and redirect to login
-			localStorage.removeItem("auth_token");
-			window.location.href = "/login";
+	async (error) => {
+		const originalRequest = error.config;
+
+		// Only handle 401 errors
+		if (error.response?.status !== 401) {
+			return Promise.reject(error);
 		}
-		return Promise.reject(error);
+
+		// Don't retry refresh endpoint or already retried requests
+		if (originalRequest.url === "/auth/refresh" || originalRequest._retry) {
+			// Clear tokens and redirect to login
+			localStorage.removeItem("auth_token");
+			localStorage.removeItem("refresh_token");
+			localStorage.removeItem("last_activity");
+			window.location.href = "/login";
+			return Promise.reject(error);
+		}
+
+		// Check if user has been inactive - if so, logout immediately
+		if (window.__isInactive && window.__isInactive()) {
+			localStorage.removeItem("auth_token");
+			localStorage.removeItem("refresh_token");
+			localStorage.removeItem("last_activity");
+			window.location.href = "/login";
+			return Promise.reject(new Error("Session expired due to inactivity"));
+		}
+
+		// If already refreshing, queue this request
+		if (isRefreshing) {
+			return new Promise((resolve, reject) => {
+				failedQueue.push({ resolve, reject });
+			})
+				.then((token) => {
+					originalRequest.headers.Authorization = `Bearer ${token}`;
+					return api(originalRequest);
+				})
+				.catch((err) => {
+					return Promise.reject(err);
+				});
+		}
+
+		originalRequest._retry = true;
+		isRefreshing = true;
+
+		try {
+			// Use the refresh function from AuthContext
+			if (window.__authRefresh) {
+				const result = await window.__authRefresh();
+				const newToken = result.accessToken;
+
+				processQueue(null, newToken);
+
+				// Retry the original request with new token
+				originalRequest.headers.Authorization = `Bearer ${newToken}`;
+				return api(originalRequest);
+			} else {
+				throw new Error("Auth refresh not available");
+			}
+		} catch (refreshError) {
+			processQueue(refreshError, null);
+
+			// Refresh failed - clear tokens and redirect
+			localStorage.removeItem("auth_token");
+			localStorage.removeItem("refresh_token");
+			localStorage.removeItem("last_activity");
+			window.location.href = "/login";
+			return Promise.reject(refreshError);
+		} finally {
+			isRefreshing = false;
+		}
 	}
 );
-
-// export async function fetchInventory(restaurantId) {
-// 	const response = await fetch(`${API_BASE}/inventory/${restaurantId}`);
-
-// 	if (!response.ok) {
-// 		throw new Error("Failed to fetch inventory");
-// 	}
-
-// 	return response.json();
-// }
-
-// export async function fetchDashboardMetrics(businessId) {
-// 	const response = await fetch(`${API_BASE}/dashboard/${businessId}`);
-
-// 	if (!response.ok) {
-// 		throw new Error("Failed to fetch metrics");
-// 	}
-
-// 	return response.json();
-// }
-
-// Add more API functions as needed
 
 export default api;

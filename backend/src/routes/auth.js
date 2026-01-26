@@ -7,6 +7,7 @@ import {
 	logoutUser,
 	resetPassword,
 	updateUser,
+	refreshSession,
 } from "../services/auth.js";
 import { requireAuth } from "../middleware/auth.js";
 
@@ -57,6 +58,24 @@ router.post("/reset-password", async (req, res) => {
 		res.json(result);
 	} catch (error) {
 		res.status(400).json({ error: error.message });
+	}
+});
+
+// POST /api/auth/refresh
+router.post("/refresh", async (req, res) => {
+	try {
+		const { refreshToken } = req.body;
+
+		if (!refreshToken) {
+			return res.status(400).json({ error: "Refresh token required" });
+		}
+
+		const result = await refreshSession(refreshToken);
+
+		res.json(result);
+	} catch (error) {
+		// Return 401 for expired/invalid refresh tokens
+		res.status(401).json({ error: error.message });
 	}
 });
 
