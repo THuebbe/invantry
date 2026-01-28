@@ -9,6 +9,8 @@ import {
 	Trash2,
 	ChefHat,
 	Building2,
+	Settings,
+	DollarSign,
 } from "lucide-react";
 
 export const menuItems = [
@@ -32,7 +34,7 @@ export const menuItems = [
 				id: "remove-waste",
 				label: "Remove/Log Waste",
 				path: "/inventory/remove",
-			}, // 👈 NEW - operational action
+			},
 		],
 	},
 	{
@@ -93,7 +95,7 @@ export const menuItems = [
 				label: "Dashboard Overview",
 				path: "/reports/dashboard",
 			},
-			{ id: "waste-analysis", label: "Waste Analysis", path: "/reports/waste" }, // 👈 NEW - analytics
+			{ id: "waste-analysis", label: "Waste Analysis", path: "/reports/waste" },
 			{
 				id: "food-cost",
 				label: "Food Cost Analysis",
@@ -109,6 +111,26 @@ export const menuItems = [
 				label: "Order Performance",
 				path: "/reports/order-performance",
 			},
+		],
+	},
+	{
+		id: "sales",
+		label: "Sales",
+		icon: DollarSign,
+		path: "/sales",
+		subItems: [
+			{ id: "today-sales", label: "Today's Sales", path: "/sales/today" },
+			{ id: "sales-history", label: "Sales History", path: "/sales/history" },
+			{ id: "inventory-impact", label: "Inventory Impact", path: "/sales/impact" },
+		],
+	},
+	{
+		id: "settings",
+		label: "Settings",
+		icon: Settings,
+		path: "/settings",
+		subItems: [
+			{ id: "integrations", label: "Integrations", path: "/settings/integrations" },
 		],
 	},
 ];

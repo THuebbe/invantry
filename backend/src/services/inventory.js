@@ -318,3 +318,63 @@ export async function removeInventory(restaurantId, items, userId) {
 		throw error;
 	}
 }
+
+/**
+ * Deduct ingredient from inventory (used by sales auto-deduction)
+ * @param {string} restaurantId - Restaurant UUID
+ * @param {string} ingredientId - Ingredient library UUID
+ * @param {number} quantity - Amount to deduct
+ * @param {string} unit - Unit of measurement
+ * @returns {Promise<Object>} Updated inventory record
+ */
+export async function deductIngredient(restaurantId, ingredientId, quantity, unit) {
+	if (!restaurantId || !ingredientId) {
+		throw new Error("Restaurant ID and Ingredient ID are required");
+	}
+
+	try {
+		// Find the inventory item
+		const { data: existing, error: findError } = await supabase
+			.from("restaurant_inventory")
+			.select("*")
+			.eq("restaurant_id", restaurantId)
+			.eq("ingredient_id", ingredientId)
+			.single();
+
+		if (findError) {
+			if (findError.code === "PGRST116") {
+				throw new Error(`Inventory item not found for ingredient: ${ingredientId}`);
+			}
+			throw findError;
+		}
+
+		const currentQuantity = parseFloat(existing.quantity);
+		const deductQuantity = parseFloat(quantity);
+		const newQuantity = Math.max(0, currentQuantity - deductQuantity);
+
+		const now = new Date().toISOString();
+		const { data: updated, error: updateError } = await supabase
+			.from("restaurant_inventory")
+			.update({
+				quantity: newQuantity,
+				updated_at: now,
+			})
+			.eq("id", existing.id)
+			.select()
+			.single();
+
+		if (updateError) throw updateError;
+
+		return {
+			inventoryId: updated.id,
+			ingredientId,
+			previousQuantity: currentQuantity,
+			deductedQuantity: deductQuantity,
+			newQuantity: parseFloat(updated.quantity),
+			wentNegative: currentQuantity - deductQuantity < 0,
+		};
+	} catch (error) {
+		console.error("Error deducting ingredient:", error);
+		throw error;
+	}
+}

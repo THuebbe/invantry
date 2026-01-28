@@ -493,3 +493,84 @@ export async function savePOSCredentials(restaurantId, posSystem, credentials) {
 		throw new Error(`Failed to save POS credentials: ${error.message}`);
 	}
 }
+
+/**
+ * Log import history for audit trail
+ * @param {string} restaurantId - Restaurant UUID
+ * @param {string} posSystem - POS system type
+ * @param {object} importResult - Import results with stats
+ * @returns {Promise<Object>} Created history record
+ */
+export async function logImportHistory(restaurantId, posSystem, importResult) {
+	if (!restaurantId) {
+		throw new Error("Restaurant ID is required");
+	}
+
+	try {
+		const { data, error } = await supabase
+			.from("pos_import_history")
+			.insert({
+				restaurant_id: restaurantId,
+				pos_system: posSystem.toLowerCase(),
+				items_created: importResult.stats?.created || 0,
+				items_updated: importResult.stats?.updated || 0,
+				items_skipped: importResult.stats?.skipped || 0,
+				items_errors: importResult.stats?.errors || 0,
+				total_items: importResult.stats?.total || 0,
+				import_options: importResult.options || {},
+				results_summary: importResult.results?.slice(0, 100) || [], // Store first 100 for reference
+				completed_at: new Date().toISOString(),
+			})
+			.select()
+			.single();
+
+		if (error) {
+			// If table doesn't exist yet, log warning and continue
+			if (error.code === "42P01") {
+				console.warn("pos_import_history table does not exist yet - skipping history logging");
+				return null;
+			}
+			throw error;
+		}
+
+		return data;
+	} catch (error) {
+		console.error("Error logging import history:", error);
+		// Don't throw - history logging should not break the import
+		return null;
+	}
+}
+
+/**
+ * Get import history for a restaurant
+ * @param {string} restaurantId - Restaurant UUID
+ * @param {number} limit - Maximum records to return (default: 10)
+ * @returns {Promise<Array>} Import history records
+ */
+export async function getImportHistory(restaurantId, limit = 10) {
+	if (!restaurantId) {
+		throw new Error("Restaurant ID is required");
+	}
+
+	try {
+		const { data, error } = await supabase
+			.from("pos_import_history")
+			.select("*")
+			.eq("restaurant_id", restaurantId)
+			.order("completed_at", { ascending: false })
+			.limit(limit);
+
+		if (error) {
+			// If table doesn't exist yet, return empty array
+			if (error.code === "42P01") {
+				return [];
+			}
+			throw error;
+		}
+
+		return data || [];
+	} catch (error) {
+		console.error("Error fetching import history:", error);
+		return [];
+	}
+}

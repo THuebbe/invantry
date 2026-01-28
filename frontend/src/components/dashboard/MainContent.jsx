@@ -10,6 +10,8 @@ import MenuItemsContent from "./content/MenuItemsContent";
 import RecipeBuilder from "../menu-items/RecipeBuilder";
 import VendorsContent from "../vendor-erp/VendorsContent";
 import RecipesContent from "./content/RecipesContent";
+import SettingsContent from "./content/SettingsContent";
+import SalesContent from "./content/SalesContent";
 
 export default function MainContent() {
 	const location = useLocation();
@@ -64,6 +66,10 @@ export default function MainContent() {
 			return <ReportsContent subsection={subsection} />;
 		case "recipes":
 			return <RecipesContent subsection={subsection} />;
+		case "settings":
+			return <SettingsContent subsection={subsection} params={params} />;
+		case "sales":
+			return <SalesContent subsection={subsection} params={params} />;
 		case "dashboard":
 		default:
 			return <DashboardContent />;
