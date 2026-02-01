@@ -44,7 +44,7 @@ function OrdersOverview() {
 				Manage your restaurant orders and purchase orders. Create orders for restocking, generate purchase orders by vendor, and track fulfillment.
 			</p>
 
-			<div className="grid grid-cols-2 gap-4">
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<OrderCard
 					title="View Orders"
 					description="See and sort through all orders by type, date, and status"

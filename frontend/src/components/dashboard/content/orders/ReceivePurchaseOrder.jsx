@@ -269,9 +269,9 @@ export default function ReceivePurchaseOrder({ poId }) {
 			)}
 
 			{/* Split View */}
-			<div className="flex gap-6 flex-1 overflow-hidden">
+			<div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 overflow-hidden">
 				{/* Left Side - Items List */}
-				<div className="flex-1 bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+				<div className="flex-1 bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col min-h-[300px]">
 					<div className="p-4 border-b border-gray-200 bg-gray-50">
 						<h3 className="font-semibold text-gray-900">PO Items</h3>
 						<p className="text-sm text-gray-600 mt-1">
@@ -296,7 +296,7 @@ export default function ReceivePurchaseOrder({ poId }) {
 				</div>
 
 				{/* Right Side - Details Panel */}
-				<div className="w-96 flex-shrink-0">
+				<div className="w-full lg:w-96 lg:flex-shrink-0">
 					{selectedItem ? (
 						<ReceivingDetailsPanel
 							item={selectedItem}

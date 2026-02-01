@@ -396,7 +396,7 @@ export default function CreateQuickOrder() {
 
 	return (
 		<>
-			<div className="flex gap-6 h-full">
+			<div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
 				{/* Left Side - Header + Line Items */}
 				<div className="flex-1 flex flex-col min-w-0">
 					{/* Order Header Card */}
@@ -565,7 +565,7 @@ export default function CreateQuickOrder() {
 				</div>
 
 				{/* Right Side - Item Details Panel */}
-				<div className="w-80 flex-shrink-0">
+				<div className="w-full lg:w-80 lg:flex-shrink-0">
 					<ItemDetailsPanel
 						item={selectedItem}
 						type="order"

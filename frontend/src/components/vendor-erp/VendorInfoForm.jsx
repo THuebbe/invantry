@@ -284,14 +284,14 @@ export default function VendorInfoForm({ vendor, onSaveSuccess }) {
       </div>
 
       {/* Metadata Row and Actions */}
-      <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-200">
-        <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-gray-500 pt-3 border-t border-gray-200">
+        <div className="flex flex-wrap gap-2 sm:gap-4">
           <span>Created: {formatDate(vendor?.created_at)}</span>
           <span>Updated: {formatDate(vendor?.updated_at)}</span>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Cancel Button - Only show when dirty */}
           {isDirty && (
             <button

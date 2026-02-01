@@ -1,10 +1,10 @@
 // VendorDetail.jsx - Main vendor detail page (full width layout)
-// Layout: Vendor info (fixed) + Tabs (fixed) + Tab content (scrollable)
-// Metrics are displayed in the Dashboard's right sidebar via MetricsColumn
+// Mobile: Sticky tabs at bottom, scrollable content
+// Desktop: Tabs above content, traditional layout
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useVendorSummary } from "../../hooks/useVendors";
 import VendorInfoForm from "./VendorInfoForm";
 import VendorTabs from "./VendorTabs";
@@ -22,6 +22,7 @@ import ItemsTab from "./tabs/ItemsTab";
 export default function VendorDetail({ vendorId: propVendorId }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const scrollContainerRef = useRef(null);
   const tabContentRef = useRef(null);
 
   // Get vendor ID from props or query params
@@ -30,12 +31,30 @@ export default function VendorDetail({ vendorId: propVendorId }) {
   // Active tab state
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Scroll to top when tab changes
-  useEffect(() => {
-    if (tabContentRef.current) {
-      tabContentRef.current.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [activeTab]);
+  // Handle tab change - scroll to show tab content at top of visible area
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+
+    // On mobile, scroll the tab content into view
+    // Small delay to ensure content has rendered
+    setTimeout(() => {
+      if (tabContentRef.current && scrollContainerRef.current) {
+        // Get the position of the tab content relative to the scroll container
+        const container = scrollContainerRef.current;
+        const tabContent = tabContentRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const contentRect = tabContent.getBoundingClientRect();
+
+        // Calculate how much to scroll to put tab content at top
+        const scrollOffset = contentRect.top - containerRect.top + container.scrollTop;
+
+        container.scrollTo({
+          top: scrollOffset - 8, // Small padding
+          behavior: "smooth",
+        });
+      }
+    }, 50);
+  };
 
   // Fetch vendor summary with all related data (items, addresses, contacts, etc.)
   const { data: vendor, isLoading, error, refetch } = useVendorSummary(vendorId);
@@ -108,7 +127,6 @@ export default function VendorDetail({ vendorId: propVendorId }) {
   }
 
   // Render tab content based on active tab
-  // Pass vendor summary data to tabs to avoid redundant API calls
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
@@ -131,9 +149,9 @@ export default function VendorDetail({ vendorId: propVendorId }) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Back Button and Title */}
-      <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+    <div className="flex flex-col h-full relative">
+      {/* Back Button and Title - Sticky on mobile */}
+      <div className="flex items-center gap-3 mb-3 md:mb-4 flex-shrink-0 sticky top-0 bg-gray-50 z-10 -mx-3 md:mx-0 px-3 md:px-0 py-2 md:py-0 md:static md:bg-transparent">
         <button
           onClick={() => navigate("/vendors")}
           className="text-gray-600 hover:text-gray-900"
@@ -141,24 +159,35 @@ export default function VendorDetail({ vendorId: propVendorId }) {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-xl font-bold text-gray-900">Vendor Details</h2>
+        <h2 className="text-lg md:text-xl font-bold text-gray-900">Vendor Details</h2>
       </div>
 
-      {/* Vendor Info - ALWAYS VISIBLE */}
-      <div className="flex-shrink-0 mb-4">
-        <VendorInfoForm vendor={vendor} />
-      </div>
-
-      {/* Tab Navigation - ALWAYS VISIBLE */}
-      <div className="flex-shrink-0 bg-white border border-gray-200 rounded-t-lg">
-        <VendorTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-
-      {/* Tab Content - SCROLLABLE */}
-      <div ref={tabContentRef} className="flex-1 overflow-y-auto bg-white border-x border-b border-gray-200 rounded-b-lg">
-        <div className="p-4">
-          {renderTabContent()}
+      {/* Main scrollable content area - add padding bottom for mobile tab bar */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        {/* Vendor Info Form */}
+        <div className="mb-4">
+          <VendorInfoForm vendor={vendor} />
         </div>
+
+        {/* Tab Navigation - DESKTOP ONLY (above content) */}
+        <div className="hidden md:block flex-shrink-0 bg-white border border-gray-200 rounded-t-lg">
+          <VendorTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
+
+        {/* Tab Content */}
+        <div
+          ref={tabContentRef}
+          className="bg-white border border-gray-200 md:border-t-0 rounded-lg md:rounded-t-none"
+        >
+          <div className="p-3 md:p-4">
+            {renderTabContent()}
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation - MOBILE ONLY (sticky bottom bar) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
+        <VendorTabs activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
     </div>
   );

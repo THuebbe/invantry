@@ -128,7 +128,7 @@ const DataTable = memo(function DataTable({
 								{columns.map((col) => (
 									<th
 										key={col.key}
-										className="px-6 py-3 text-left text-xs font-semibold text-gray-700"
+										className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-semibold text-gray-700"
 									>
 										{col.label}
 									</th>
@@ -141,7 +141,7 @@ const DataTable = memo(function DataTable({
 									{columns.map((col) => (
 										<td
 											key={`${index}-${col.key}`}
-											className="px-6 py-4"
+											className="px-3 md:px-6 py-2 md:py-4"
 										>
 											<div className="h-4 bg-gray-200 rounded animate-pulse"></div>
 										</td>
@@ -178,7 +178,7 @@ const DataTable = memo(function DataTable({
 							{columns.map((column) => (
 								<th
 									key={column.key}
-									className={`px-6 py-3 text-left text-xs font-semibold text-gray-700 ${
+									className={`px-3 md:px-6 py-2 md:py-3 text-left text-xs font-semibold text-gray-700 ${
 										column.sortable ? "cursor-pointer hover:bg-gray-100" : ""
 									} transition-colors`}
 									onClick={() => column.sortable && handleSort(column.key)}
@@ -242,7 +242,7 @@ const DataTable = memo(function DataTable({
 									{columns.map((column) => (
 										<td
 											key={`${rowIndex}-${column.key}`}
-											className="px-6 py-4 text-sm text-gray-700"
+											className="px-3 md:px-6 py-2 md:py-4 text-sm text-gray-700"
 										>
 											{formatCellValue(
 												row[column.key],

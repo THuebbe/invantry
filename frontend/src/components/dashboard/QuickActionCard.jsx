@@ -18,8 +18,8 @@ export default function QuickActionCard({ action }) {
 		<Link
 			to={action.path}
 			className={`
-        bg-white border-2 rounded-lg p-6 h-32 
-        flex flex-col items-center justify-center gap-2
+        bg-white border-2 rounded-lg p-3 md:p-6 h-20 md:h-32
+        flex flex-col items-center justify-center gap-1 md:gap-2
         transition-all hover:shadow-md cursor-pointer
         ${
 					colorClasses[action.color] ||
@@ -27,8 +27,8 @@ export default function QuickActionCard({ action }) {
 				}
       `}
 		>
-			<Icon size={32} />
-			<span className="font-semibold text-center">{action.label}</span>
+			<Icon size={24} className="md:w-8 md:h-8" />
+			<span className="font-semibold text-center text-xs md:text-base leading-tight">{action.label}</span>
 		</Link>
 	);
 }

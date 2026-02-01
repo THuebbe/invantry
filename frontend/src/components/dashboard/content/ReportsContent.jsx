@@ -32,7 +32,7 @@ function ReportsOverview() {
 				Reports Overview
 			</h2>
 
-			<div className="grid grid-cols-2 gap-4">
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<ReportCard
 					title="Dashboard Overview"
 					description="Key metrics and performance indicators"

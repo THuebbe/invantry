@@ -19,7 +19,7 @@ export default function QuickActionsCarousel({ actions }) {
 	};
 
 	return (
-		<div className="relative">
+		<div className="relative h-full">
 			{/* Scroll buttons - hidden on mobile */}
 			<button
 				onClick={() => scroll("left")}
@@ -38,7 +38,7 @@ export default function QuickActionsCarousel({ actions }) {
 			{/* Scrollable container */}
 			<div
 				ref={scrollContainerRef}
-				className="flex w-full gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+				className="flex w-full h-full gap-2 md:gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-1"
 				style={{
 					scrollbarWidth: "none", // Firefox
 					msOverflowStyle: "none", // IE/Edge
@@ -47,7 +47,7 @@ export default function QuickActionsCarousel({ actions }) {
 				{actions.map((action) => (
 					<div
 						key={action.id}
-						className="flex-1 w-full max-w-xs snap-start"
+						className="flex-shrink-0 w-24 md:w-40 lg:flex-1 lg:max-w-xs snap-start"
 					>
 						<QuickActionCard action={action} />
 					</div>

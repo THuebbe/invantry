@@ -10,7 +10,7 @@ export default function DashboardContent() {
 				Get a quick overview of your restaurant inventory and operations.
 			</p>
 
-			<div className="grid grid-cols-2 gap-4">
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
 					<h3 className="font-semibold text-blue-900 mb-2">Quick Stats</h3>
 					<p className="text-sm text-blue-700">

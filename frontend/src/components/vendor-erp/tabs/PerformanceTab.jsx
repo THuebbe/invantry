@@ -80,7 +80,7 @@ export default function PerformanceTab({ vendorId }) {
     <div className="space-y-4">
       {/* Summary KPI Cards */}
       {metrics && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Total Items */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
@@ -219,7 +219,7 @@ export default function PerformanceTab({ vendorId }) {
         <h4 className="text-sm font-semibold text-blue-900 mb-2">
           Performance Grading Scale
         </h4>
-        <div className="grid grid-cols-5 gap-2 text-xs">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-xs">
           <div className="bg-green-100 border border-green-200 rounded p-2 text-center">
             <div className="font-bold text-green-700">A</div>
             <div className="text-green-600">90-100%</div>

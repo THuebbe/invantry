@@ -102,7 +102,7 @@ export default function VendorMetricsDashboard() {
           <Award className="w-4 h-4 text-gray-600" />
           Performance Grade Distribution
         </h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="text-center">
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="text-2xl font-bold text-green-700">{gradeA}</div>
@@ -166,7 +166,7 @@ export default function VendorMetricsDashboard() {
         <h3 className="text-base font-semibold text-gray-900 mb-4">
           Average Quality Metrics
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="text-sm text-green-600 mb-1">On-Time Delivery</div>
             <div className="text-2xl font-bold text-green-700">{avgOnTimeDelivery}%</div>

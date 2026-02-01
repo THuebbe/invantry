@@ -36,7 +36,7 @@ function VendorsOverview() {
         maintain vendor contacts and documentation.
       </p>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <VendorCard
           title="All Vendors"
           description="View and manage all your suppliers and vendors"
