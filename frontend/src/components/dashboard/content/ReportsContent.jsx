@@ -27,8 +27,8 @@ export default function ReportsContent({ subsection }) {
 // Reports Overview - shows when clicking main "Reports" menu item
 function ReportsOverview() {
 	return (
-		<div className="bg-white rounded-lg border border-gray-200 p-6">
-			<h2 className="text-2xl font-bold text-gray-900 mb-4">
+		<div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
+			<h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
 				Reports Overview
 			</h2>
 
@@ -37,31 +37,31 @@ function ReportsOverview() {
 					title="Dashboard Overview"
 					description="Key metrics and performance indicators"
 					icon="📊"
-					path="/dashboard/reports/dashboard"
+					path="/reports/dashboard"
 				/>
 				<ReportCard
 					title="Waste Analysis"
 					description="Track waste trends and identify problem areas"
 					icon="🗑️"
-					path="/dashboard/reports/waste"
+					path="/reports/waste"
 				/>
 				<ReportCard
 					title="Food Cost Analysis"
 					description="Monitor food cost percentages and variances"
 					icon="💰"
-					path="/dashboard/reports/food-cost"
+					path="/reports/food-cost"
 				/>
 				<ReportCard
 					title="Inventory Health"
 					description="Stock levels, turnover, and reorder insights"
 					icon="📦"
-					path="/dashboard/reports/inventory-health"
+					path="/reports/inventory-health"
 				/>
 				<ReportCard
 					title="Order Performance"
 					description="Supplier reliability and order fulfillment"
 					icon="📋"
-					path="/dashboard/reports/order-performance"
+					path="/reports/order-performance"
 				/>
 			</div>
 		</div>
@@ -69,14 +69,19 @@ function ReportsOverview() {
 }
 
 function ReportCard({ title, description, icon, path }) {
+	const handleClick = () => {
+		window.history.pushState({}, "", path);
+		window.dispatchEvent(new PopStateEvent("popstate"));
+	};
+
 	return (
-		<a
-			href={path}
-			className="block p-6 bg-white border border-gray-200 rounded-lg hover:border-green-300 hover:shadow-md transition-all"
+		<button
+			onClick={handleClick}
+			className="block w-full text-left p-6 bg-white border border-gray-200 rounded-lg hover:border-green-300 hover:shadow-md transition-all"
 		>
 			<div className="text-4xl mb-3">{icon}</div>
 			<h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
 			<p className="text-sm text-gray-600">{description}</p>
-		</a>
+		</button>
 	);
 }

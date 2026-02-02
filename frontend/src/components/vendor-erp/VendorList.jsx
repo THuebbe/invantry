@@ -6,10 +6,8 @@ import { useVendors } from "../../hooks/useVendors";
 import VendorCard from "./components/VendorCard";
 import VendorForm from "./forms/VendorForm";
 import { Search, Filter, Plus, Loader2, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
-export default function VendorList() {
-  const navigate = useNavigate();
+export default function VendorList({ title = "All Vendors" }) {
 
   // Initialize state from localStorage with fallbacks
   const [searchTerm, setSearchTerm] = useState(() =>
@@ -148,7 +146,7 @@ export default function VendorList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">All Vendors</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900">{title}</h2>
           <p className="text-sm text-gray-600">
             {filteredVendors.length} vendor{filteredVendors.length !== 1 ? 's' : ''} found
           </p>

@@ -113,6 +113,22 @@ function App() {
 								}
 							/>
 							<Route
+								path="/sales/*"
+								element={
+									<ProtectedRoute>
+										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+							<Route
+								path="/settings/*"
+								element={
+									<ProtectedRoute>
+										<Dashboard />
+									</ProtectedRoute>
+								}
+							/>
+							<Route
 								path="/vendor-test"
 								element={
 									<ProtectedRoute>

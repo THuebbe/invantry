@@ -25,12 +25,12 @@ export const quickActions = [
 		description: "Record waste or usage",
 	},
 	{
-		id: "quick-order",
-		label: "Quick Order",
+		id: "create-order",
+		label: "Create Order",
 		icon: ShoppingCart,
-		path: "/orders/new",
+		path: "/orders/create",
 		color: "blue",
-		description: "Create purchase order",
+		description: "Create new order",
 	},
 	{
 		id: "add-recipe",

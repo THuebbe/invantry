@@ -45,41 +45,73 @@ export default function Sidebar({ isMobileMenuOpen, onCloseMobileMenu }) {
 					const hasSubItems = item.subItems && item.subItems.length > 0;
 					const parentActive = isParentActive(item);
 
+					const isSubmenuOpen = openSubmenu === item.id;
+
 					return (
 						<div key={item.id}>
 							{hasSubItems ? (
 								// Parent item with subitems - clickable for both navigation AND submenu
-								<div className="relative">
-									<Link
-										to={item.path}
-										className={`
-                      flex items-center gap-3 p-3 rounded-lg
-                      transition-colors flex-1
-                      ${
-												parentActive
-													? "bg-green-50 text-green-700 font-medium"
-													: "text-gray-700 hover:bg-gray-50"
-											}
-                    `}
-										onClick={handleNavigation}
-									>
-										<Icon size={20} />
-										<span>{item.label}</span>
-									</Link>
+								<>
+									<div className="relative">
+										<Link
+											to={item.path}
+											className={`
+                        flex items-center gap-3 p-3 rounded-lg
+                        transition-colors flex-1
+                        ${
+													parentActive
+														? "bg-green-50 text-green-700 font-medium"
+														: "text-gray-700 hover:bg-gray-50"
+												}
+                      `}
+											onClick={handleNavigation}
+										>
+											<Icon size={20} />
+											<span>{item.label}</span>
+										</Link>
 
-									{/* Chevron button - opens submenu */}
-									<button
-										onClick={() => handleItemClick(item)}
-										className={`
-                      absolute right-2 top-1/2 -translate-y-1/2
-                      w-8 h-8 rounded-lg flex items-center justify-center
-                      hover:bg-gray-100 transition-colors
-                      ${parentActive ? "text-green-700" : "text-gray-400"}
-                    `}
-									>
-										<ChevronRight size={16} />
-									</button>
-								</div>
+										{/* Chevron button - opens submenu */}
+										<button
+											onClick={() => handleItemClick(item)}
+											className={`
+                        absolute right-2 top-1/2 -translate-y-1/2
+                        w-8 h-8 rounded-lg flex items-center justify-center
+                        hover:bg-gray-100 transition-colors
+                        ${parentActive ? "text-green-700" : "text-gray-400"}
+                      `}
+										>
+											<ChevronRight
+												size={16}
+												className={`transform transition-transform ${
+													isSubmenuOpen ? "rotate-90" : ""
+												}`}
+											/>
+										</button>
+									</div>
+
+									{/* Mobile inline submenu */}
+									{isSubmenuOpen && (
+										<div className="md:hidden ml-6 mt-1 space-y-1 border-l-2 border-gray-200 pl-3">
+											{item.subItems.map((subItem) => (
+												<Link
+													key={subItem.id}
+													to={subItem.path}
+													onClick={handleNavigation}
+													className={`
+                            block p-2 rounded-lg text-sm transition-colors
+                            ${
+															isActive(subItem.path)
+																? "bg-green-50 text-green-700 font-medium"
+																: "text-gray-600 hover:bg-gray-50"
+														}
+                          `}
+												>
+													{subItem.label}
+												</Link>
+											))}
+										</div>
+									)}
+								</>
 							) : (
 								// Regular item without subitems
 								<Link

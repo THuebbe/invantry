@@ -15,7 +15,7 @@ export default function OverviewTab({ vendorId, vendor }) {
   const [showDocumentForm, setShowDocumentForm] = useState(false);
 
   const handleCreatePurchaseOrder = () => {
-    navigate('/orders/create-quick-order', {
+    navigate('/orders/create', {
       state: {
         vendorId: vendorId,
         vendorName: vendor?.name || ''

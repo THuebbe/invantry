@@ -36,7 +36,11 @@ export default function InventoryHealthReport() {
 
 	const isLoading = inventoryQuery.isLoading;
 	const isError = inventoryQuery.isError;
-	const inventory = inventoryQuery.data || [];
+	// Ensure inventory is always an array (API might return object with data property)
+	const rawData = inventoryQuery.data;
+	const inventory = Array.isArray(rawData)
+		? rawData
+		: (Array.isArray(rawData?.data) ? rawData.data : []);
 
 	// Track data fetch time
 	useEffect(() => {
@@ -55,6 +59,18 @@ export default function InventoryHealthReport() {
 		let outOfStockCount = 0;
 		const lowStockItems = [];
 		const expiringItems = [];
+
+		// Safety check - ensure inventory is iterable
+		if (!Array.isArray(inventory)) {
+			return {
+				totalItems: 0,
+				lowStockCount: 0,
+				expiringCount: 0,
+				outOfStockCount: 0,
+				lowStockItems: [],
+				expiringItems: [],
+			};
+		}
 
 		inventory.forEach((item) => {
 			totalItems++;

@@ -2,10 +2,8 @@
 
 import ViewOrders from "./orders/ViewOrders";
 import CreateQuickOrder from "./orders/CreateQuickOrder";
-import CreateCustomOrder from "./orders/CreateCustomOrder";
 import ViewPurchaseOrders from "./orders/ViewPurchaseOrders";
 import CreateQuickPOs from "./orders/CreateQuickPOs";
-import CreateCustomPO from "./orders/CreateCustomPO";
 import ReceivePurchaseOrder from "./orders/ReceivePurchaseOrder";
 import EditPurchaseOrder from "./orders/EditPurchaseOrder";
 
@@ -14,16 +12,18 @@ export default function OrdersContent({ subsection, params }) {
 	switch (subsection) {
 		case "view-orders":
 			return <ViewOrders />;
+		// Consolidated order creation (handles both "create" and legacy "create-quick-order")
+		case "create":
+		case "create-order":
 		case "create-quick-order":
+		case "new":
 			return <CreateQuickOrder />;
-		case "create-custom-order":
-			return <CreateCustomOrder />;
 		case "view-purchase-orders":
 			return <ViewPurchaseOrders />;
+		// Consolidated PO creation (handles both "create-po" and legacy "create-quick-pos")
+		case "create-po":
 		case "create-quick-pos":
 			return <CreateQuickPOs />;
-		case "create-custom-po":
-			return <CreateCustomPO />;
 		case "receive-po":
 			return <ReceivePurchaseOrder poId={params?.poId} />;
 		case "edit-po":
@@ -36,11 +36,11 @@ export default function OrdersContent({ subsection, params }) {
 // Orders Overview - shows when clicking main "Orders" menu item
 function OrdersOverview() {
 	return (
-		<div className="bg-white rounded-lg border border-gray-200 p-6">
-			<h2 className="text-2xl font-bold text-gray-900 mb-4">
+		<div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
+			<h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
 				Orders Overview
 			</h2>
-			<p className="text-gray-600 mb-6">
+			<p className="text-sm md:text-base text-gray-600 mb-6">
 				Manage your restaurant orders and purchase orders. Create orders for restocking, generate purchase orders by vendor, and track fulfillment.
 			</p>
 
@@ -53,18 +53,11 @@ function OrdersOverview() {
 					color="blue"
 				/>
 				<OrderCard
-					title="Create Quick Order"
-					description="Auto-populate order with all low stock items for fast restocking"
-					icon="⚡"
-					path="/orders/create-quick-order"
+					title="Create Order"
+					description="Create a new order with low stock suggestions or custom items"
+					icon="📝"
+					path="/orders/create"
 					color="green"
-				/>
-				<OrderCard
-					title="Create Custom Order"
-					description="Build orders from scratch with complete ingredient selection"
-					icon="🛠️"
-					path="/orders/create-custom-order"
-					color="blue"
 				/>
 				<OrderCard
 					title="View Purchase Orders"
@@ -74,18 +67,11 @@ function OrdersOverview() {
 					color="purple"
 				/>
 				<OrderCard
-					title="Create Quick Purchase Orders"
-					description="Auto-generate POs for all open orders grouped by vendor"
+					title="Create Purchase Order"
+					description="Generate POs from open orders grouped by vendor"
 					icon="🚀"
-					path="/orders/create-quick-pos"
+					path="/orders/create-po"
 					color="green"
-				/>
-				<OrderCard
-					title="Create Custom Purchase Order"
-					description="Build purchase orders from scratch for specific vendors"
-					icon="📝"
-					path="/orders/create-custom-po"
-					color="purple"
 				/>
 			</div>
 		</div>
