@@ -5,13 +5,12 @@ import { Search, Plus, ChevronDown, Lock } from "lucide-react";
 
 /**
  * OrderLineItem - A single line item row for Orders or Purchase Orders
- * 
+ *
  * Features:
  * - Smart item search (by name, item number, or UPC)
  * - Click-anywhere-to-select
- * - Always-editable inputs
- * - UOM locked for valid library items
- * - Auto-calculated extended cost
+ * - Mobile: Clean card layout without repeated headers
+ * - Desktop: Grid layout with all fields visible
  */
 export default function OrderLineItem({
 	lineNumber,
@@ -21,14 +20,14 @@ export default function OrderLineItem({
 	onChange,
 	onComplete,
 	onCreateNewItem,
-	availableItems = [], // From ingredient library
+	availableItems = [],
 	uomOptions = ["Case", "Box", "Each", "lbs", "oz", "gal", "dozen"],
 }) {
 	const [showItemSearch, setShowItemSearch] = useState(false);
 	const [searchQuery, setSearchQuery] = useState(item?.itemName || "");
 	const [filteredItems, setFilteredItems] = useState([]);
 	const [showUomDropdown, setShowUomDropdown] = useState(false);
-	
+
 	const itemInputRef = useRef(null);
 	const searchTimeoutRef = useRef(null);
 	const costInputRef = useRef(null);
@@ -105,10 +104,8 @@ export default function OrderLineItem({
 		if (e.key === "Enter") {
 			e.preventDefault();
 			if (filteredItems.length > 0) {
-				// If there are results, show them
 				setShowItemSearch(true);
 			} else if (searchQuery.length >= 3) {
-				// Search and show results
 				setShowItemSearch(true);
 			}
 		} else if (e.key === "Tab" && !e.shiftKey) {
@@ -127,7 +124,6 @@ export default function OrderLineItem({
 	// Handle Tab out of last field (cost) to complete line
 	const handleCostKeyDown = (e) => {
 		if (e.key === "Tab" && !e.shiftKey) {
-			// User is tabbing forward out of the last field
 			if (item?.itemName && item?.qty) {
 				onComplete?.();
 			}
@@ -153,36 +149,98 @@ export default function OrderLineItem({
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, []);
 
+	// Search Results Dropdown Component (shared between layouts)
+	const SearchDropdown = () => (
+		<div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+			{filteredItems.length > 0 ? (
+				<>
+					{filteredItems.map((libItem) => (
+						<button
+							key={libItem.id}
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								handleSelectItem(libItem);
+							}}
+							className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
+						>
+							<div className="font-medium text-gray-900 text-sm">
+								{libItem.name}
+							</div>
+							<div className="text-xs text-gray-500 mt-0.5">
+								{libItem.category}
+								{libItem.itemNumber && ` · #${libItem.itemNumber}`}
+								{libItem.preferredVendor && ` · ${libItem.preferredVendor}`}
+							</div>
+						</button>
+					))}
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onCreateNewItem?.(searchQuery);
+							setShowItemSearch(false);
+						}}
+						className="w-full px-4 py-3 text-left hover:bg-green-50 border-t border-gray-200 text-green-600 flex items-center gap-2"
+					>
+						<Plus size={16} />
+						<span className="text-sm font-medium">
+							Create "{searchQuery}" as new item
+						</span>
+					</button>
+				</>
+			) : searchQuery.length >= 3 ? (
+				<div className="p-4">
+					<p className="text-sm text-gray-500 mb-3">
+						No items found matching "{searchQuery}"
+					</p>
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onCreateNewItem?.(searchQuery);
+							setShowItemSearch(false);
+						}}
+						className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
+					>
+						<Plus size={16} />
+						Create New Item
+					</button>
+				</div>
+			) : (
+				<div className="p-4 text-sm text-gray-500">
+					Type at least 3 characters to search...
+				</div>
+			)}
+		</div>
+	);
+
 	return (
 		<div
 			onClick={onSelect}
 			className={`
-				border rounded-lg p-4 transition-all cursor-pointer
-				${isSelected 
-					? "border-green-500 bg-green-50 shadow-md" 
+				border rounded-lg transition-all cursor-pointer
+				${isSelected
+					? "border-green-500 bg-green-50 shadow-md"
 					: "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
 				}
 			`}
 		>
-			<div className="flex items-start gap-4">
-				{/* Line Number */}
-				<div className="flex items-center gap-2 pt-6">
-					{isSelected && (
-						<span className="text-green-600">◆</span>
-					)}
-					<span className="text-sm font-medium text-gray-500 w-6 text-right">
-						{lineNumber}
-					</span>
-				</div>
+			{/* MOBILE LAYOUT - Clean card without repeated headers */}
+			<div className="md:hidden p-3">
+				<div className="flex items-start gap-3">
+					{/* Line Number */}
+					<div className="flex items-center gap-1 pt-1">
+						{isSelected && <span className="text-green-600 text-xs">◆</span>}
+						<span className="text-xs font-medium text-gray-400 w-5 text-right">
+							{lineNumber}
+						</span>
+					</div>
 
-				{/* Main Fields Grid */}
-				<div className="flex-1 grid grid-cols-12 gap-2">
-					{/* Item Name - spans more columns */}
-					<div className="col-span-4 item-search-container relative">
-						<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-							Item Name
-						</label>
-						<div className="relative">
+					{/* Main Content */}
+					<div className="flex-1 min-w-0">
+						{/* Item Name - Prominent */}
+						<div className="item-search-container relative mb-2">
 							<input
 								ref={itemInputRef}
 								type="text"
@@ -201,128 +259,57 @@ export default function OrderLineItem({
 										setShowItemSearch(true);
 									}
 								}}
-								placeholder="Search or enter item..."
-								className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+								placeholder="Search item..."
+								className={`w-full px-3 py-2 border rounded-lg text-sm font-medium
+									${item?.itemName
+										? "border-gray-200 bg-white"
+										: "border-gray-300 bg-white"
+									}
+									focus:ring-2 focus:ring-green-500 focus:border-green-500
+								`}
 							/>
-							<Search 
-								size={16} 
-								className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-							/>
+							{showItemSearch && <SearchDropdown />}
 						</div>
 
-						{/* Search Results Dropdown */}
-						{showItemSearch && (
-							<div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-								{filteredItems.length > 0 ? (
-									<>
-										{filteredItems.map((libItem) => (
-											<button
-												key={libItem.id}
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													handleSelectItem(libItem);
-												}}
-												className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
-											>
-												<div className="font-medium text-gray-900 text-sm">
-													{libItem.name}
-												</div>
-												<div className="text-xs text-gray-500 mt-0.5">
-													{libItem.category}
-													{libItem.itemNumber && ` · #${libItem.itemNumber}`}
-													{libItem.preferredVendor && ` · ${libItem.preferredVendor}`}
-												</div>
-											</button>
-										))}
-										<button
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation();
-												onCreateNewItem?.(searchQuery);
-												setShowItemSearch(false);
-											}}
-											className="w-full px-4 py-3 text-left hover:bg-green-50 border-t border-gray-200 text-green-600 flex items-center gap-2"
-										>
-											<Plus size={16} />
-											<span className="text-sm font-medium">
-												Create "{searchQuery}" as new item
-											</span>
-										</button>
-									</>
-								) : searchQuery.length >= 3 ? (
-									<div className="p-4">
-										<p className="text-sm text-gray-500 mb-3">
-											No items found matching "{searchQuery}"
-										</p>
-										<button
-											type="button"
-											onClick={(e) => {
-												e.stopPropagation();
-												onCreateNewItem?.(searchQuery);
-												setShowItemSearch(false);
-											}}
-											className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
-										>
-											<Plus size={16} />
-											Create New Item
-										</button>
+						{/* Qty, UOM, Cost Row */}
+						<div className="flex items-center gap-2">
+							{/* Qty */}
+							<div className="w-16">
+								<input
+									type="number"
+									min="0"
+									step="1"
+									value={item?.qty || ""}
+									onChange={(e) => handleFieldChange("qty", e.target.value)}
+									placeholder="Qty"
+									className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
+								/>
+							</div>
+
+							{/* UOM */}
+							<div className="uom-dropdown-container relative">
+								{isLibraryItem ? (
+									<div className="px-2 py-1.5 text-sm text-gray-600 bg-gray-100 rounded flex items-center gap-1">
+										<span>{item?.uom || "—"}</span>
+										<Lock size={12} className="text-gray-400" />
 									</div>
 								) : (
-									<div className="p-4 text-sm text-gray-500">
-										Type at least 3 characters to search...
-									</div>
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											setShowUomDropdown(!showUomDropdown);
+										}}
+										className="px-2 py-1.5 border border-gray-300 rounded text-sm flex items-center gap-1 bg-white"
+									>
+										<span className={item?.uom ? "text-gray-700" : "text-gray-400"}>
+											{item?.uom || "Unit"}
+										</span>
+										<ChevronDown size={14} className="text-gray-400" />
+									</button>
 								)}
-							</div>
-						)}
-					</div>
-
-					{/* Quantity */}
-					<div className="col-span-2">
-						<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-							Qty
-						</label>
-						<input
-							type="number"
-							min="0"
-							step="1"
-							value={item?.qty || ""}
-							onChange={(e) => handleFieldChange("qty", e.target.value)}
-							placeholder="0"
-							className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm text-center"
-						/>
-					</div>
-
-					{/* UOM */}
-					<div className="col-span-2 uom-dropdown-container relative">
-						<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-							UOM
-						</label>
-						{isLibraryItem ? (
-							// Locked UOM for library items
-							<div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm flex items-center justify-between text-gray-700">
-								<span>{item?.uom || "—"}</span>
-								<Lock size={14} className="text-gray-400" />
-							</div>
-						) : (
-							// Editable UOM dropdown for new items
-							<div className="relative">
-								<button
-									type="button"
-									onClick={(e) => {
-										e.stopPropagation();
-										setShowUomDropdown(!showUomDropdown);
-									}}
-									className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm flex items-center justify-between hover:border-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-								>
-									<span className={item?.uom ? "text-gray-900" : "text-gray-400"}>
-										{item?.uom || "Select"}
-									</span>
-									<ChevronDown size={16} className="text-gray-400" />
-								</button>
-
 								{showUomDropdown && (
-									<div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+									<div className="absolute z-20 top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto min-w-[80px]">
 										{uomOptions.map((uom) => (
 											<button
 												key={uom}
@@ -342,41 +329,187 @@ export default function OrderLineItem({
 									</div>
 								)}
 							</div>
-						)}
-					</div>
 
-					{/* Cost */}
-					<div className="col-span-2">
-						<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-							Cost
-						</label>
-						<div className="relative">
-							<span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-								$
-							</span>
-							<input
-								ref={costInputRef}
-								type="number"
-								min="0"
-								step="0.01"
-								value={item?.cost || ""}
-								onChange={(e) => handleFieldChange("cost", e.target.value)}
-								onKeyDown={handleCostKeyDown}
-								placeholder="0.00"
-								className="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm text-right"
-							/>
+							<span className="text-gray-400">·</span>
+
+							{/* Cost */}
+							<div className="flex items-center gap-1">
+								<span className="text-gray-400 text-sm">$</span>
+								<input
+									ref={costInputRef}
+									type="number"
+									min="0"
+									step="0.01"
+									value={item?.cost || ""}
+									onChange={(e) => handleFieldChange("cost", e.target.value)}
+									onKeyDown={handleCostKeyDown}
+									placeholder="0.00"
+									className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm text-right focus:ring-2 focus:ring-green-500 focus:border-green-500"
+								/>
+							</div>
+
+							{/* Extended Cost */}
+							{extCost > 0 && (
+								<>
+									<span className="text-gray-400">=</span>
+									<span className="text-sm font-medium text-gray-700">
+										${extCost.toFixed(2)}
+									</span>
+								</>
+							)}
 						</div>
 					</div>
+				</div>
+			</div>
 
-					{/* Extended Cost (calculated, read-only) */}
-					<div className="col-span-2">
-						<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 truncate">
-							Ext Cost
-						</label>
-						<div className="w-full px-2 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-right font-medium text-gray-700 overflow-hidden">
-							<span className="block truncate" title={`$${extCost.toFixed(2)}`}>
-								${extCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-							</span>
+			{/* DESKTOP LAYOUT - Original grid with headers */}
+			<div className="hidden md:block p-4">
+				<div className="flex items-start gap-4">
+					{/* Line Number */}
+					<div className="flex items-center gap-2 pt-6">
+						{isSelected && (
+							<span className="text-green-600">◆</span>
+						)}
+						<span className="text-sm font-medium text-gray-500 w-6 text-right">
+							{lineNumber}
+						</span>
+					</div>
+
+					{/* Main Fields Grid */}
+					<div className="flex-1 grid grid-cols-12 gap-2">
+						{/* Item Name */}
+						<div className="col-span-4 item-search-container relative">
+							<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+								Item Name
+							</label>
+							<div className="relative">
+								<input
+									type="text"
+									value={searchQuery}
+									onChange={(e) => {
+										setSearchQuery(e.target.value);
+										handleFieldChange("itemName", e.target.value);
+										if (e.target.value.length >= 3) {
+											setShowItemSearch(true);
+										}
+									}}
+									onDoubleClick={handleItemDoubleClick}
+									onKeyDown={handleItemKeyDown}
+									onFocus={() => {
+										if (searchQuery.length >= 3) {
+											setShowItemSearch(true);
+										}
+									}}
+									placeholder="Search or enter item..."
+									className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+								/>
+								<Search
+									size={16}
+									className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+								/>
+							</div>
+							{showItemSearch && <SearchDropdown />}
+						</div>
+
+						{/* Quantity */}
+						<div className="col-span-2">
+							<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+								Qty
+							</label>
+							<input
+								type="number"
+								min="0"
+								step="1"
+								value={item?.qty || ""}
+								onChange={(e) => handleFieldChange("qty", e.target.value)}
+								placeholder="0"
+								className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm text-center"
+							/>
+						</div>
+
+						{/* UOM */}
+						<div className="col-span-2 uom-dropdown-container relative">
+							<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+								UOM
+							</label>
+							{isLibraryItem ? (
+								<div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm flex items-center justify-between text-gray-700">
+									<span>{item?.uom || "—"}</span>
+									<Lock size={14} className="text-gray-400" />
+								</div>
+							) : (
+								<div className="relative">
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											setShowUomDropdown(!showUomDropdown);
+										}}
+										className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm flex items-center justify-between hover:border-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+									>
+										<span className={item?.uom ? "text-gray-900" : "text-gray-400"}>
+											{item?.uom || "Select"}
+										</span>
+										<ChevronDown size={16} className="text-gray-400" />
+									</button>
+
+									{showUomDropdown && (
+										<div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+											{uomOptions.map((uom) => (
+												<button
+													key={uom}
+													type="button"
+													onClick={(e) => {
+														e.stopPropagation();
+														handleFieldChange("uom", uom);
+														setShowUomDropdown(false);
+													}}
+													className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+														item?.uom === uom ? "bg-green-50 text-green-700" : "text-gray-700"
+													}`}
+												>
+													{uom}
+												</button>
+											))}
+										</div>
+									)}
+								</div>
+							)}
+						</div>
+
+						{/* Cost */}
+						<div className="col-span-2">
+							<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+								Cost
+							</label>
+							<div className="relative">
+								<span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+									$
+								</span>
+								<input
+									ref={costInputRef}
+									type="number"
+									min="0"
+									step="0.01"
+									value={item?.cost || ""}
+									onChange={(e) => handleFieldChange("cost", e.target.value)}
+									onKeyDown={handleCostKeyDown}
+									placeholder="0.00"
+									className="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm text-right"
+								/>
+							</div>
+						</div>
+
+						{/* Extended Cost */}
+						<div className="col-span-2">
+							<label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 truncate">
+								Ext Cost
+							</label>
+							<div className="w-full px-2 py-2 border border-gray-100 rounded-lg bg-gray-50 text-sm text-right font-medium text-gray-700 overflow-hidden">
+								<span className="block truncate" title={`$${extCost.toFixed(2)}`}>
+									${extCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+								</span>
+							</div>
 						</div>
 					</div>
 				</div>

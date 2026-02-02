@@ -14,6 +14,7 @@ export default function ItemDetailsPanel({
 	type = "order", // "order" or "purchaseOrder"
 	onUpdate,
 	onClose,
+	isSheet = false, // Mobile sheet mode - removes border/background
 }) {
 	const [isEditingNotes, setIsEditingNotes] = useState(false);
 	const [notesValue, setNotesValue] = useState(item?.notes || "");
@@ -22,7 +23,11 @@ export default function ItemDetailsPanel({
 
 	if (!item) {
 		return (
-			<div className="bg-white border border-gray-200 rounded-lg p-6 h-full flex flex-col items-center justify-center text-gray-400">
+			<div className={`flex flex-col items-center justify-center text-gray-400 ${
+				isSheet
+					? "p-4"
+					: "bg-white border border-gray-200 rounded-lg p-6 h-full"
+			}`}>
 				<Package size={48} className="mb-4 opacity-50" />
 				<p className="text-sm">Select a line item to view details</p>
 			</div>
@@ -40,7 +45,11 @@ export default function ItemDetailsPanel({
 	};
 
 	return (
-		<div className="bg-white border border-gray-200 rounded-lg p-6 h-full flex flex-col">
+		<div className={`flex flex-col ${
+			isSheet
+				? "p-4"
+				: "bg-white border border-gray-200 rounded-lg p-6 h-full"
+		}`}>
 			{/* Header */}
 			<div className="flex items-start justify-between mb-6">
 				<div>
