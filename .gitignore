@@ -31,3 +31,9 @@ frontend/test-*.js
 backend/dist/
 frontend/dist/
 frontend/build/
+
+# Archive folder (historical docs)
+.archive/
+
+# Test coverage output
+coverage/

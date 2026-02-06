@@ -495,9 +495,19 @@ export async function getSyncStatus(restaurantId) {
 		.from("restaurants")
 		.select("pos_system, last_pos_sync")
 		.eq("id", restaurantId)
-		.single();
+		.maybeSingle();
 
 	if (error) throw error;
+
+	// If no restaurant found, return default status
+	if (!restaurant) {
+		return {
+			posSystem: null,
+			lastSync: null,
+			unprocessedSales: 0,
+			configured: false,
+		};
+	}
 
 	// Get count of unprocessed sales
 	const { count: unprocessedCount } = await supabase
@@ -511,5 +521,6 @@ export async function getSyncStatus(restaurantId) {
 		posSystem: restaurant.pos_system,
 		lastSync: restaurant.last_pos_sync,
 		unprocessedSales: unprocessedCount || 0,
+		configured: true,
 	};
 }

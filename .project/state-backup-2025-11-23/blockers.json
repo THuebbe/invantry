@@ -1,8 +1,0 @@
-[
-  {
-    "timestamp": "2025-11-21T00:00:00Z",
-    "event": "system",
-    "message": "Blocker tracking initialized",
-    "details": "This file tracks blockers - issues that prevent task completion"
-  }
-]

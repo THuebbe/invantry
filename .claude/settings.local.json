@@ -29,7 +29,8 @@
       "Bash(node --check src/services/vendorPayment.js)",
       "Bash(npm run lint:*)",
       "Bash(wc:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
