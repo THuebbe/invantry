@@ -242,7 +242,7 @@ function PurchaseOrderCard({ purchaseOrder: po }) {
 
 	const handleReceive = (poId) => {
 		// Navigate to receiving screen
-		window.history.pushState({}, "", `/dashboard/orders/receive-po?poId=${poId}`);
+		window.history.pushState({}, "", `/receiving/new?poId=${poId}`);
 		window.dispatchEvent(new PopStateEvent("popstate"));
 	};
 

@@ -4,8 +4,8 @@ import ViewOrders from "./orders/ViewOrders";
 import CreateQuickOrder from "./orders/CreateQuickOrder";
 import ViewPurchaseOrders from "./orders/ViewPurchaseOrders";
 import CreateQuickPOs from "./orders/CreateQuickPOs";
-import ReceivePurchaseOrder from "./orders/ReceivePurchaseOrder";
 import EditPurchaseOrder from "./orders/EditPurchaseOrder";
+import RedirectToReceiving from "./orders/RedirectToReceiving";
 
 export default function OrdersContent({ subsection, params }) {
 	// Route to specific order component based on subsection
@@ -25,7 +25,8 @@ export default function OrdersContent({ subsection, params }) {
 		case "create-quick-pos":
 			return <CreateQuickPOs />;
 		case "receive-po":
-			return <ReceivePurchaseOrder poId={params?.poId} />;
+			// Redirect to new Receiving section for backward compatibility
+			return <RedirectToReceiving poId={params?.poId} />;
 		case "edit-po":
 			return <EditPurchaseOrder poId={params?.poId} />;
 		default:

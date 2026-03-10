@@ -1111,12 +1111,12 @@ async function areAllOrderItemsReceived(orderId) {
  * @param {string} restaurantId - Restaurant UUID for validation
  * @returns {Promise<Object>} Detailed receiving result
  */
-export async function receivePurchaseOrderItems(purchaseOrderId, receivedItems, restaurantId) {
+export async function receivePurchaseOrderItems(purchaseOrderId, receivedItems, restaurantId, userInfo = {}) {
 	try {
 		// Validate PO exists and belongs to restaurant
 		const { data: po, error: poError } = await supabase
 			.from("purchase_orders")
-			.select("id, order_number, status, restaurant_id")
+			.select("id, order_number, status, restaurant_id, supplier_name")
 			.eq("id", purchaseOrderId)
 			.single();
 
@@ -1273,6 +1273,35 @@ export async function receivePurchaseOrderItems(purchaseOrderId, receivedItems, 
 			}
 		}
 
+		// Log this receiving event (non-fatal if it fails)
+		try {
+			const logItems = processedItems.map(item => {
+				const sourceItem = receivedItems.find(r => r.po_item_id === item.po_item_id);
+				return {
+					po_item_id: item.po_item_id,
+					ingredient_name: item.item_name,
+					quantity_received: sourceItem?.quantity_received || 0,
+					unit: sourceItem?.unit || null,
+					unit_price: sourceItem?.unit_price || 0,
+					expiration_date: sourceItem?.expiration_date || null,
+					batch_number: sourceItem?.batch_number || null,
+					notes: sourceItem?.notes || null,
+				};
+			});
+
+			await createReceivingLogEntry({
+				restaurantId: restaurantId || po.restaurant_id,
+				purchaseOrderId,
+				poNumber: po.order_number,
+				vendorName: po.supplier_name,
+				receivedBy: userInfo.userId || null,
+				receivedByName: userInfo.userName || null,
+				itemsReceived: logItems,
+			});
+		} catch (logError) {
+			console.warn("Failed to create receiving log entry:", logError.message);
+		}
+
 		return {
 			success: true,
 			po_id: purchaseOrderId,
@@ -1365,4 +1394,167 @@ async function updateInventoryFromReceiving(poItems, poId, restaurantId) {
 		// Don't throw - inventory update is non-critical for receiving workflow
 		console.warn("Continuing despite inventory update error");
 	}
+}
+
+// ============================================
+// RECEIVING LOG FUNCTIONS
+// ============================================
+
+/**
+ * Create a receiving log entry
+ * @param {Object} params
+ * @returns {Promise<Object>} Created receiving_log row
+ */
+export async function createReceivingLogEntry({
+	restaurantId,
+	purchaseOrderId,
+	poNumber,
+	vendorName,
+	receivedBy,
+	receivedByName,
+	itemsReceived,
+	notes,
+}) {
+	const totalItemsCount = itemsReceived.length;
+	const totalValue = itemsReceived.reduce(
+		(sum, item) => sum + (parseFloat(item.quantity_received) || 0) * (parseFloat(item.unit_price) || 0),
+		0
+	);
+
+	const { data, error } = await supabase
+		.from("receiving_log")
+		.insert({
+			restaurant_id: restaurantId,
+			purchase_order_id: purchaseOrderId,
+			po_number: poNumber,
+			vendor_name: vendorName,
+			received_by: receivedBy,
+			received_by_name: receivedByName,
+			items_received: itemsReceived,
+			total_items_count: totalItemsCount,
+			total_value: parseFloat(totalValue.toFixed(2)),
+			notes: notes || null,
+		})
+		.select()
+		.single();
+
+	if (error) throw error;
+	return data;
+}
+
+/**
+ * Get receiving log entries with optional filters
+ * @param {string} restaurantId - Restaurant UUID
+ * @param {Object} filters
+ * @returns {Promise<{entries: Array, total: number}>}
+ */
+export async function getReceivingLog(restaurantId, filters = {}) {
+	const { poId, vendor, startDate, endDate, limit = 50, offset = 0 } = filters;
+
+	let query = supabase
+		.from("receiving_log")
+		.select("*", { count: "exact" })
+		.eq("restaurant_id", restaurantId)
+		.order("received_at", { ascending: false });
+
+	if (poId) {
+		query = query.eq("purchase_order_id", poId);
+	}
+	if (vendor) {
+		query = query.ilike("vendor_name", `%${vendor}%`);
+	}
+	if (startDate) {
+		query = query.gte("received_at", startDate);
+	}
+	if (endDate) {
+		query = query.lte("received_at", endDate + "T23:59:59.999Z");
+	}
+
+	query = query.range(offset, offset + limit - 1);
+
+	const { data, error, count } = await query;
+	if (error) throw error;
+
+	return { entries: data || [], total: count || 0 };
+}
+
+/**
+ * Get a single receiving log entry
+ * @param {string} logId - receiving_log UUID
+ * @param {string} restaurantId - Restaurant UUID
+ * @returns {Promise<Object>}
+ */
+export async function getReceivingLogEntry(logId, restaurantId) {
+	const { data, error } = await supabase
+		.from("receiving_log")
+		.select("*")
+		.eq("id", logId)
+		.eq("restaurant_id", restaurantId)
+		.single();
+
+	if (error) throw error;
+	return data;
+}
+
+/**
+ * Get purchase orders that are open for receiving
+ * @param {string} restaurantId - Restaurant UUID
+ * @param {Object} filters
+ * @returns {Promise<Array>}
+ */
+export async function getOpenPurchaseOrders(restaurantId, filters = {}) {
+	const { search } = filters;
+
+	let query = supabase
+		.from("purchase_orders")
+		.select(`
+			*,
+			purchase_order_items(
+				id,
+				item_name,
+				quantity_ordered,
+				quantity_received,
+				unit,
+				ingredient:ingredient_library(name)
+			)
+		`)
+		.eq("restaurant_id", restaurantId)
+		.in("status", ["draft", "ordered", "backordered"])
+		.order("created_at", { ascending: false });
+
+	if (search) {
+		query = query.or(`order_number.ilike.%${search}%,supplier_name.ilike.%${search}%`);
+	}
+
+	const { data, error } = await query;
+	if (error) throw error;
+
+	// Calculate receiving progress for each PO
+	return (data || []).map(po => {
+		const items = po.purchase_order_items || [];
+		const totalOrdered = items.reduce((sum, item) => sum + parseFloat(item.quantity_ordered || 0), 0);
+		const totalReceived = items.reduce((sum, item) => sum + parseFloat(item.quantity_received || 0), 0);
+		const percentComplete = totalOrdered > 0 ? Math.round((totalReceived / totalOrdered) * 100) : 0;
+
+		return {
+			id: po.id,
+			order_number: po.order_number,
+			supplier_name: po.supplier_name,
+			status: po.status,
+			order_date: po.order_date,
+			expected_delivery_date: po.expected_delivery_date,
+			total: po.total,
+			item_count: items.length,
+			total_ordered: totalOrdered,
+			total_received: totalReceived,
+			percent_complete: percentComplete,
+			items: items.map(item => ({
+				id: item.id,
+				item_name: item.item_name || item.ingredient?.name || "Unknown",
+				quantity_ordered: parseFloat(item.quantity_ordered || 0),
+				quantity_received: parseFloat(item.quantity_received || 0),
+				unit: item.unit,
+			})),
+		};
+	});
 }

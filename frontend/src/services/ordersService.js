@@ -160,6 +160,34 @@ export const getPOReceivingStatus = async (poId) => {
 };
 
 // ============================================
+// RECEIVING DASHBOARD
+// ============================================
+
+/**
+ * Get purchase orders open for receiving (draft/ordered/backordered)
+ */
+export const getOpenPOs = async (filters = {}) => {
+  const response = await api.get('/orders/open-pos', { params: filters });
+  return response.data;
+};
+
+/**
+ * Get receiving log entries with optional filters
+ */
+export const getReceivingLog = async (filters = {}) => {
+  const response = await api.get('/orders/receiving-log', { params: filters });
+  return response.data;
+};
+
+/**
+ * Get a single receiving log entry
+ */
+export const getReceivingLogEntry = async (logId) => {
+  const response = await api.get(`/orders/receiving-log/${logId}`);
+  return response.data;
+};
+
+// ============================================
 // VENDOR MANAGEMENT
 // ============================================
 

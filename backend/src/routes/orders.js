@@ -1,7 +1,7 @@
 // /backend/src/routes/order.js
 
 import express from "express";
-import { createPurchaseOrder, createPOFromOrderItems, receivePurchaseOrderItems } from "../services/orders.js";
+import { createPurchaseOrder, createPOFromOrderItems, receivePurchaseOrderItems, getOpenPurchaseOrders, getReceivingLog, getReceivingLogEntry } from "../services/orders.js";
 import { requireAuth } from "../middleware/auth.js";
 import { supabase } from "../services/supabase.js";
 
@@ -391,7 +391,11 @@ router.post("/purchase-orders/:id/receive", async (req, res) => {
 		}
 
 		// Receive the items with enhanced workflow
-		const result = await receivePurchaseOrderItems(id, items, restaurantId);
+		const userInfo = {
+			userId: req.user?.id || null,
+			userName: req.userDetails?.firstName || null,
+		};
+		const result = await receivePurchaseOrderItems(id, items, restaurantId, userInfo);
 
 		res.json(result);
 	} catch (error) {
@@ -650,6 +654,63 @@ router.delete("/purchase-orders/:id", async (req, res) => {
 			success: false,
 			error: error.message
 		});
+	}
+});
+
+// ============================================
+// RECEIVING LOG & OPEN POS
+// ============================================
+
+// GET /api/orders/open-pos - Get POs eligible for receiving
+router.get("/open-pos", async (req, res) => {
+	try {
+		const restaurantId = await getRestaurantId(req.businessId);
+		const { search } = req.query;
+
+		const result = await getOpenPurchaseOrders(restaurantId, { search });
+		res.json(result);
+	} catch (error) {
+		console.error("❌ Get open POs error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// GET /api/orders/receiving-log - Get receiving history
+router.get("/receiving-log", async (req, res) => {
+	try {
+		const restaurantId = await getRestaurantId(req.businessId);
+		const { poId, vendor, startDate, endDate, limit, offset } = req.query;
+
+		const result = await getReceivingLog(restaurantId, {
+			poId,
+			vendor,
+			startDate,
+			endDate,
+			limit: limit ? parseInt(limit) : 50,
+			offset: offset ? parseInt(offset) : 0,
+		});
+
+		res.json(result);
+	} catch (error) {
+		console.error("❌ Get receiving log error:", error);
+		res.status(500).json({ error: error.message });
+	}
+});
+
+// GET /api/orders/receiving-log/:id - Get single receiving log entry
+router.get("/receiving-log/:id", async (req, res) => {
+	try {
+		const restaurantId = await getRestaurantId(req.businessId);
+		const entry = await getReceivingLogEntry(req.params.id, restaurantId);
+
+		if (!entry) {
+			return res.status(404).json({ error: "Receiving log entry not found" });
+		}
+
+		res.json(entry);
+	} catch (error) {
+		console.error("❌ Get receiving log entry error:", error);
+		res.status(500).json({ error: error.message });
 	}
 });
 

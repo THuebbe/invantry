@@ -15,7 +15,7 @@ import { receivePO, getPOReceivingStatus } from "../../../../services/ordersServ
  * - Real-time total calculations
  * - Expiration date and batch number tracking
  */
-export default function ReceivePurchaseOrder({ poId }) {
+export default function ReceivePurchaseOrder({ poId, onBack }) {
 	// eslint-disable-next-line no-unused-vars
 	const { user } = useAuth();
 
@@ -159,9 +159,12 @@ export default function ReceivePurchaseOrder({ poId }) {
 
 			setSuccess(true);
 			setTimeout(() => {
-				// Navigate back to PO list
-				window.history.pushState({}, "", "/dashboard/orders/purchase-orders");
-				window.dispatchEvent(new PopStateEvent("popstate"));
+				if (onBack) {
+					onBack();
+				} else {
+					window.history.pushState({}, "", "/receiving");
+					window.dispatchEvent(new PopStateEvent("popstate"));
+				}
 			}, 2000);
 		} catch (err) {
 			console.error("Error receiving PO:", err);
@@ -173,8 +176,12 @@ export default function ReceivePurchaseOrder({ poId }) {
 
 	// Handle back navigation
 	const handleGoBack = () => {
-		window.history.pushState({}, "", "/dashboard/orders/purchase-orders");
-		window.dispatchEvent(new PopStateEvent("popstate"));
+		if (onBack) {
+			onBack();
+		} else {
+			window.history.pushState({}, "", "/receiving");
+			window.dispatchEvent(new PopStateEvent("popstate"));
+		}
 	};
 
 	// Loading state

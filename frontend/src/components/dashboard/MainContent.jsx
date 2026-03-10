@@ -47,7 +47,7 @@ export default function MainContent() {
 		case "menu-items":
 			return <MenuItemsContent subsection={subsection} />;
 		case "receiving":
-			return <ReceivingContent subsection={subsection} />;
+			return <ReceivingContent subsection={subsection} params={params} />;
 		case "orders":
 			return (
 				<OrdersContent
