@@ -1,7 +1,8 @@
 // PaymentQuickEntry.jsx - Quick form to record a vendor AP payment
 import { useState } from "react";
-import { DollarSign, Plus, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, Plus, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useCreateVendorPayment } from "../../../hooks/useVendorAPPayments";
+import Toast from "../../shared/Toast";
 
 const PAYMENT_METHODS = [
   { value: "ACH", label: "ACH Transfer" },
@@ -124,10 +125,11 @@ export default function PaymentQuickEntry({ vendorId, openInvoices = [], onSucce
         <form onSubmit={handleSubmit} className="p-4 pt-0 space-y-4">
           {/* Success Message */}
           {showSuccess && (
-            <div className="flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 rounded-lg p-3">
-              <Check className="w-4 h-4" />
-              <span className="text-sm">Payment recorded successfully!</span>
-            </div>
+            <Toast
+              type="success"
+              message="Payment recorded successfully!"
+              onClose={() => setShowSuccess(false)}
+            />
           )}
 
           {/* Row 1: Payment Date + Amount */}

@@ -43,15 +43,15 @@ export default function Dashboard() {
 
 				{/* Desktop: Full carousel */}
 				<div className="hidden md:block mb-4 flex-shrink-0">
-					<div className="h-32">
+					<div className="h-14">
 						<QuickActionsCarousel actions={quickActions} />
 					</div>
 				</div>
 
 				{/* Main Content Area */}
 				<div className="flex-1 min-h-0 mt-2 md:mt-0">
-					<div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
-						<div className="lg:col-span-3 flex flex-col min-h-0">
+					<div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-full lg:grid-rows-1">
+						<div className="lg:col-span-4 flex flex-col min-h-0">
 							<MainContent />
 						</div>
 

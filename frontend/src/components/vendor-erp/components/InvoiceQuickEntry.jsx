@@ -1,7 +1,8 @@
 // InvoiceQuickEntry.jsx - Quick form to add a vendor invoice
 import { useState } from "react";
-import { FileText, Plus, X, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, Plus, X, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useCreateVendorInvoice } from "../../../hooks/useVendorInvoices";
+import Toast from "../../shared/Toast";
 
 export default function InvoiceQuickEntry({ vendorId, purchaseOrders = [], onSuccess }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -97,10 +98,11 @@ export default function InvoiceQuickEntry({ vendorId, purchaseOrders = [], onSuc
         <form onSubmit={handleSubmit} className="p-4 pt-0 space-y-4">
           {/* Success Message */}
           {showSuccess && (
-            <div className="flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 rounded-lg p-3">
-              <Check className="w-4 h-4" />
-              <span className="text-sm">Invoice added successfully!</span>
-            </div>
+            <Toast
+              type="success"
+              message="Invoice added successfully!"
+              onClose={() => setShowSuccess(false)}
+            />
           )}
 
           {/* Row 1: Invoice Number + Invoice Date */}

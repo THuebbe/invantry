@@ -427,15 +427,18 @@ router.get("/purchase-orders/:id/receiving-status", async (req, res) => {
 				id,
 				order_number,
 				status,
+				supplier_name,
 				order_date,
 				expected_delivery_date,
 				purchase_order_items(
 					id,
 					item_name,
+					ingredient_id,
 					quantity_ordered,
 					quantity_received,
 					unit,
-					ingredient:ingredient_library(name)
+					unit_price,
+					ingredient:ingredient_library(id, name)
 				)
 			`)
 			.eq("id", id)
@@ -455,11 +458,14 @@ router.get("/purchase-orders/:id/receiving-status", async (req, res) => {
 
 			return {
 				po_item_id: item.id,
+				ingredient_id: item.ingredient_id || item.ingredient?.id,
 				item_name: item.item_name || item.ingredient?.name || "Unknown",
 				quantity_ordered: ordered,
 				quantity_received: received,
 				remaining: parseFloat(remaining.toFixed(4)),
 				percent_complete: percentComplete,
+				unit: item.unit,
+				unit_price: parseFloat(item.unit_price || 0),
 			};
 		});
 
@@ -473,6 +479,7 @@ router.get("/purchase-orders/:id/receiving-status", async (req, res) => {
 		res.json({
 			po_id: po.id,
 			po_number: po.order_number,
+			supplier_name: po.supplier_name,
 			status: po.status,
 			order_date: po.order_date,
 			expected_delivery: po.expected_delivery_date,

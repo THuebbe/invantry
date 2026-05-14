@@ -160,6 +160,19 @@ export const getPOReceivingStatus = async (poId) => {
 };
 
 // ============================================
+// BARCODE / ITEM LOOKUP
+// ============================================
+
+/**
+ * Look up an ingredient by barcode/UPC
+ * Returns ingredient including id, name, unit
+ */
+export const lookupIngredientByBarcode = async (barcode) => {
+  const response = await api.get('/inventory/lookup', { params: { barcode } });
+  return response.data;
+};
+
+// ============================================
 // RECEIVING DASHBOARD
 // ============================================
 

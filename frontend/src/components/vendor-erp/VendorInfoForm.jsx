@@ -2,9 +2,10 @@
 // Editable fields with save functionality
 
 import { useState, useEffect } from 'react';
-import { Building2, Check, AlertCircle, Loader2, Save, X } from "lucide-react";
+import { Building2, AlertCircle, Loader2, Save, X } from "lucide-react";
 import { useUpdateVendor } from "../../hooks/useVendors";
 import { validateRequired } from "../../utils/vendorValidators";
+import Toast from "../shared/Toast";
 
 export default function VendorInfoForm({ vendor, onSaveSuccess }) {
   // Form state - initialize from vendor prop
@@ -168,10 +169,12 @@ export default function VendorInfoForm({ vendor, onSaveSuccess }) {
 
       {/* Success Message */}
       {showSuccess && (
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-          <Check className="w-4 h-4 text-green-600" />
-          <p className="text-sm text-green-800">Vendor information saved successfully.</p>
-        </div>
+        <Toast
+          type="success"
+          message="Vendor information saved successfully."
+          onClose={() => setShowSuccess(false)}
+          className="mb-4"
+        />
       )}
 
       {/* Submit Error */}
